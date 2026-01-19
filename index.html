@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#020617">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Entreno Pablo">
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkVudHJlbm8gUGFibG8iLAogICJzaG9ydF9uYW1lIjogIkVudHJlbm8iLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiIzAyMDYxNyIsCiAgInRoZW1lX2NvbG9yIjogIiMwMjA2MTciLAogICJpY29ucyI6IFsKICAgIHsKICAgICAgInNyYyI6ICJkYXRhOmltYWdlL3N2Zyt4bWwsJTNDc3ZnJTIweG1sbnMlM0QnaHR0cCUzQSUyRiUyRnd3dy53My5vcmclMkYyMDAwJTJGc3ZnJyUyMHZpZXdCb3glM0QnMCUyMDAlMjA1MTIlMjA1MTInJTNFJTNDcmVjdCUyMGZpbGwlM0QnJTIzMDIwNjE3JyUyMHdpZHRoJTNEJzUxMicluMjBoZWlnaHQlM0QnNTEyJyUyRiUzRSUzQ3RleHQlMjB4JTNEJzUwJTI1JyUyMHklM0QnNTAlMjUnJTIwZm9udC1zaXplJTNEJzI1MCclMjBmaWxsJTNEJyUyMzM4NDNmZiclMjB0ZXh0LWFuY2hvciUzRCdtaWRkbGUnJTIwZG9taW5hbnQtYmFzZWxpbmUlM0QnbWlkZGxlJyUzRSVGMCU5RiU4QiU5OSUzQyUyRnRleHQlM0UlM0MlMkZzdmclM0UiLAogICAgICAic2l6ZXMiOiAiNTEyeDUxMiIsCiAgICAgICJ0eXBlIjogImltYWdlL3N2Zyt4bWwiCiAgICB9CiAgXQp9">
+    <title>Powerbuilding 6M - Pablo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #020617; 
+            color: #f8fafc; 
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior: none;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        @keyframes pulse-green { 
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            50% { box-shadow: 0 0 20px 10px rgba(16, 185, 129, 0); }
+        }
+        
+        .pulse-success { animation: pulse-green 1s ease-in-out; }
+        
+        #loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #020617;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .btn-active:active { transform: scale(0.95); }
+        
+        .install-prompt {
+            animation: slideUp 0.4s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .chart-bar {
+            transition: all 0.3s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div id="loader">
+            <i class="fas fa-dumbbell fa-spin fa-3x text-blue-500 mb-4"></i>
+            <p class="text-slate-500 font-bold uppercase tracking-widest text-xs">Cargando Entreno Pablo...</p>
+        </div>
+    </div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        function App() {
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+            const [loginError, setLoginError] = useState('');
+            const [loading, setLoading] = useState(true);
+            
+            const [currentWeek, setCurrentWeek] = useState(1);
+            const [completedSets, setCompletedSets] = useState({});
+            const [initialWeights, setInitialWeights] = useState({ sentadilla: 100, muerto: 100, pecho: 80 });
+            const [workoutNotes, setWorkoutNotes] = useState({});
+            const [workoutHistory, setWorkoutHistory] = useState([]);
+            
+            const [timer, setTimer] = useState(0);
+            const [isActive, setIsActive] = useState(false);
+            const [targetTime, setTargetTime] = useState(180); // 3 minutos por defecto
+            
+            const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+            const [deferredPrompt, setDeferredPrompt] = useState(null);
+            const [currentView, setCurrentView] = useState('workout'); // 'workout', 'history', 'settings'
+            
+            const timerInterval = useRef(null);
+
+            // PWA Install Handler
+            useEffect(() => {
+                const handler = (e) => {
+                    e.preventDefault();
+                    setDeferredPrompt(e);
+                    // Solo mostrar si no está instalado
+                    if (!window.matchMedia('(display-mode: standalone)').matches) {
+                        setTimeout(() => setShowInstallPrompt(true), 2000);
+                    }
+                };
+                window.addEventListener('beforeinstallprompt', handler);
+                return () => window.removeEventListener('beforeinstallprompt', handler);
+            }, []);
+
+            const handleInstall = async () => {
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                setDeferredPrompt(null);
+                setShowInstallPrompt(false);
+            };
+
+            // Cargar datos al iniciar
+            useEffect(() => {
+                try {
+                    const savedSession = localStorage.getItem('pablo_session');
+                    const savedWeek = localStorage.getItem('pablo_currentWeek');
+                    const savedSets = localStorage.getItem('pablo_completedSets');
+                    const savedWeights = localStorage.getItem('pablo_initialWeights');
+                    const savedNotes = localStorage.getItem('pablo_workoutNotes');
+                    const savedHistory = localStorage.getItem('pablo_workoutHistory');
+                    const savedTargetTime = localStorage.getItem('pablo_targetTime');
+
+                    if (savedSession === 'active') setIsLoggedIn(true);
+                    if (savedWeek) setCurrentWeek(parseInt(savedWeek));
+                    if (savedSets) setCompletedSets(JSON.parse(savedSets));
+                    if (savedWeights) setInitialWeights(JSON.parse(savedWeights));
+                    if (savedNotes) setWorkoutNotes(JSON.parse(savedNotes));
+                    if (savedHistory) setWorkoutHistory(JSON.parse(savedHistory));
+                    if (savedTargetTime) setTargetTime(parseInt(savedTargetTime));
+                } catch (err) {
+                    console.error('Error cargando datos:', err);
+                }
+                setLoading(false);
+            }, []);
+
+            // Guardar datos automáticamente
+            const saveData = (updates = {}) => {
+                try {
+                    if (updates.currentWeek !== undefined) {
+                        localStorage.setItem('pablo_currentWeek', updates.currentWeek);
+                    }
+                    if (updates.completedSets !== undefined) {
+                        localStorage.setItem('pablo_completedSets', JSON.stringify(updates.completedSets));
+                    }
+                    if (updates.initialWeights !== undefined) {
+                        localStorage.setItem('pablo_initialWeights', JSON.stringify(updates.initialWeights));
+                    }
+                    if (updates.workoutNotes !== undefined) {
+                        localStorage.setItem('pablo_workoutNotes', JSON.stringify(updates.workoutNotes));
+                    }
+                    if (updates.workoutHistory !== undefined) {
+                        localStorage.setItem('pablo_workoutHistory', JSON.stringify(updates.workoutHistory));
+                    }
+                    if (updates.targetTime !== undefined) {
+                        localStorage.setItem('pablo_targetTime', updates.targetTime);
+                    }
+                } catch (err) {
+                    console.error('Error guardando datos:', err);
+                }
+            };
+
+            // Timer mejorado
+            useEffect(() => {
+                if (isActive && timer > 0) {
+                    timerInterval.current = setInterval(() => {
+                        setTimer(t => {
+                            if (t <= 1) {
+                                setIsActive(false);
+                                // Vibración al terminar (si está disponible)
+                                if ('vibrate' in navigator) {
+                                    navigator.vibrate([200, 100, 200]);
+                                }
+                                // Notificación
+                                if ('Notification' in window && Notification.permission === 'granted') {
+                                    new Notification('¡Descanso terminado!', {
+                                        body: 'Es hora de la siguiente serie',
+                                        icon: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext y=\'50%\' x=\'50%\' font-size=\'60\' text-anchor=\'middle\' dominant-baseline=\'middle\'%3E💪%3C/text%3E%3C/svg%3E',
+                                        vibrate: [200, 100, 200]
+                                    });
+                                }
+                                return 0;
+                            }
+                            return t - 1;
+                        });
+                    }, 1000);
+                } else {
+                    if (timerInterval.current) clearInterval(timerInterval.current);
+                }
+                return () => {
+                    if (timerInterval.current) clearInterval(timerInterval.current);
+                };
+            }, [isActive, timer]);
+
+            const startTimer = () => {
+                setTimer(targetTime);
+                setIsActive(true);
+                // Solicitar permiso de notificaciones
+                if ('Notification' in window && Notification.permission === 'default') {
+                    Notification.requestPermission();
+                }
+            };
+
+            const toggleSet = (dayId, exerciseName, setIndex, isWarmup = false) => {
+                const key = `${currentWeek}-${dayId}-${exerciseName}-${isWarmup ? 'warmup' : 'work'}-${setIndex}`;
+                const newCompletedSets = { ...completedSets, [key]: !completedSets[key] };
+                setCompletedSets(newCompletedSets);
+                saveData({ completedSets: newCompletedSets });
+                
+                // Si completó una serie de trabajo, iniciar timer automáticamente
+                if (!isWarmup && !completedSets[key]) {
+                    startTimer();
+                }
+                
+                // Registrar en historial
+                if (!completedSets[key]) {
+                    const newHistory = [...workoutHistory, {
+                        date: new Date().toISOString(),
+                        week: currentWeek,
+                        day: dayId,
+                        exercise: exerciseName,
+                        setNumber: setIndex + 1,
+                        isWarmup
+                    }];
+                    setWorkoutHistory(newHistory);
+                    saveData({ workoutHistory: newHistory });
+                }
+            };
+
+            const stats = useMemo(() => {
+                // Progresión: Semana 1-4 (5x5, 6x6, 7x7, 8x8), luego repite con +2.5kg
+                const weekInCycle = ((currentWeek - 1) % 4) + 1; // 1, 2, 3, 4
+                const cycleNumber = Math.floor((currentWeek - 1) / 4); // 0, 1, 2, 3, 4, 5...
+                
+                // Sets y reps según semana en el ciclo
+                const setsReps = [
+                    { sets: 5, reps: 5 },  // Semana 1
+                    { sets: 6, reps: 6 },  // Semana 2
+                    { sets: 7, reps: 7 },  // Semana 3
+                    { sets: 8, reps: 8 }   // Semana 4
+                ];
+                
+                const current = setsReps[weekInCycle - 1];
+                const increment = cycleNumber * 2.5; // +2.5kg por cada ciclo completo
+                
+                return {
+                    sets: current.sets,
+                    reps: current.reps,
+                    increment: increment
+                };
+            }, [currentWeek]);
+
+            if (loading) {
+                return (
+                    <div id="loader">
+                        <i className="fas fa-dumbbell fa-spin fa-3x text-blue-500 mb-4"></i>
+                        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Cargando...</p>
+                    </div>
+                );
+            }
+
+            if (!isLoggedIn) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+                        <div className="w-full max-w-sm fade-in">
+                            <div className="text-center mb-8">
+                                <div className="w-20 h-20 bg-blue-600/20 rounded-3xl mx-auto flex items-center justify-center mb-6 border border-blue-500/30 shadow-xl shadow-blue-500/10">
+                                    <i className="fas fa-dumbbell text-blue-500 text-3xl"></i>
+                                </div>
+                                <h1 className="text-3xl font-black italic uppercase tracking-tighter mb-2">Entreno Pablo</h1>
+                                <p className="text-slate-500 text-xs uppercase font-bold tracking-widest">Powerbuilding 6 Meses</p>
+                            </div>
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                if (loginForm.username.toLowerCase() === 'pablobernardo' && loginForm.password === 'timon') {
+                                    setIsLoggedIn(true);
+                                    localStorage.setItem('pablo_session', 'active');
+                                    setLoginError('');
+                                } else {
+                                    setLoginError('Credenciales incorrectas');
+                                }
+                            }} className="space-y-4">
+                                <input 
+                                    type="text" 
+                                    placeholder="Usuario" 
+                                    className="w-full bg-slate-950 border border-slate-800 p-4 rounded-xl outline-none focus:border-blue-500 text-white transition-colors" 
+                                    onChange={e => setLoginForm({...loginForm, username: e.target.value})} 
+                                />
+                                <input 
+                                    type="password" 
+                                    placeholder="Contraseña" 
+                                    className="w-full bg-slate-950 border border-slate-800 p-4 rounded-xl outline-none focus:border-blue-500 text-white transition-colors" 
+                                    onChange={e => setLoginForm({...loginForm, password: e.target.value})} 
+                                />
+                                {loginError && <p className="text-red-500 text-xs font-bold text-center animate-pulse">{loginError}</p>}
+                                <button className="w-full bg-gradient-to-r from-blue-600 to-blue-500 p-4 rounded-xl font-black uppercase italic tracking-widest active:scale-95 transition-all shadow-lg shadow-blue-600/20">
+                                    Entrar
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
+
+            const routine = [
+                { id: 'Lunes', title: 'Lunes: Pierna Fuerte', ex: [
+                    { name: 'Sentadilla', w: initialWeights.sentadilla + stats.increment, s: stats.sets, r: stats.reps, wu: true, type: 'fuerte' },
+                    { name: 'Pecho Plano', w: initialWeights.pecho + stats.increment, s: stats.sets, r: stats.reps, wu: true, type: 'fuerte' },
+                    { name: 'Peso Muerto (T)', w: initialWeights.muerto + stats.increment, s: 3, r: 5, wu: false, type: 'tranquilo' }
+                ]},
+                { id: 'Miercoles', title: 'Miércoles: Pecho Fuerte', ex: [
+                    { name: 'Pecho Plano', w: initialWeights.pecho + stats.increment, s: stats.sets, r: stats.reps, wu: true, type: 'fuerte' },
+                    { name: 'Sentadilla (T)', w: initialWeights.sentadilla + stats.increment, s: 3, r: 5, wu: false, type: 'tranquilo' },
+                    { name: 'Remo Barra', w: 'Moderado', s: 4, r: 10, wu: false, type: 'accesorio' }
+                ]},
+                { id: 'Viernes', title: 'Viernes: Muerto Fuerte', ex: [
+                    { name: 'Peso Muerto', w: initialWeights.muerto + stats.increment, s: stats.sets, r: stats.reps, wu: true, type: 'fuerte' },
+                    { name: 'Sentadilla (T)', w: initialWeights.sentadilla + stats.increment, s: 3, r: 5, wu: false, type: 'tranquilo' },
+                    { name: 'Pecho (T)', w: Math.round((initialWeights.pecho + stats.increment) * 0.8), s: 3, r: 5, wu: false, type: 'tranquilo' }
+                ]}
+            ];
+
+            // Vista de Historial
+            const HistoryView = () => {
+                const groupedHistory = useMemo(() => {
+                    const groups = {};
+                    workoutHistory.forEach(entry => {
+                        const date = new Date(entry.date).toLocaleDateString('es-AR');
+                        if (!groups[date]) groups[date] = [];
+                        groups[date].push(entry);
+                    });
+                    return Object.entries(groups).reverse().slice(0, 10);
+                }, []);
+
+                return (
+                    <div className="max-w-md mx-auto min-h-screen pb-24 fade-in p-4">
+                        <h2 className="text-2xl font-black uppercase italic mb-6 border-l-4 border-emerald-500 pl-3">Historial</h2>
+                        {groupedHistory.length === 0 ? (
+                            <div className="text-center py-12">
+                                <i className="fas fa-clipboard-list text-slate-800 text-5xl mb-4"></i>
+                                <p className="text-slate-600 font-bold">No hay entrenamientos registrados</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {groupedHistory.map(([date, entries]) => (
+                                    <div key={date} className="bg-slate-900 p-4 rounded-2xl border border-slate-800">
+                                        <p className="text-xs font-black text-emerald-400 mb-3 uppercase">{date}</p>
+                                        <div className="space-y-2">
+                                            {entries.map((entry, i) => (
+                                                <div key={i} className="flex justify-between items-center text-sm">
+                                                    <span className="text-slate-400">{entry.exercise}</span>
+                                                    <span className="text-slate-600 font-bold text-xs">Sem {entry.week} • {entry.day}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // Vista de Configuración
+            const SettingsView = () => {
+                return (
+                    <div className="max-w-md mx-auto min-h-screen pb-24 fade-in p-4">
+                        <h2 className="text-2xl font-black uppercase italic mb-6 border-l-4 border-blue-500 pl-3">Configuración</h2>
+                        
+                        <div className="space-y-6">
+                            {/* Pesos Iniciales */}
+                            <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800">
+                                <h3 className="text-sm font-black uppercase text-blue-400 mb-4">Pesos Base (kg)</h3>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="text-xs text-slate-500 font-bold block mb-1">Sentadilla</label>
+                                        <input 
+                                            type="number" 
+                                            value={initialWeights.sentadilla}
+                                            onChange={(e) => {
+                                                const newWeights = {...initialWeights, sentadilla: parseInt(e.target.value) || 0};
+                                                setInitialWeights(newWeights);
+                                                saveData({initialWeights: newWeights});
+                                            }}
+                                            className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-500 font-bold block mb-1">Peso Muerto</label>
+                                        <input 
+                                            type="number" 
+                                            value={initialWeights.muerto}
+                                            onChange={(e) => {
+                                                const newWeights = {...initialWeights, muerto: parseInt(e.target.value) || 0};
+                                                setInitialWeights(newWeights);
+                                                saveData({initialWeights: newWeights});
+                                            }}
+                                            className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-500 font-bold block mb-1">Pecho Plano</label>
+                                        <input 
+                                            type="number" 
+                                            value={initialWeights.pecho}
+                                            onChange={(e) => {
+                                                const newWeights = {...initialWeights, pecho: parseInt(e.target.value) || 0};
+                                                setInitialWeights(newWeights);
+                                                saveData({initialWeights: newWeights});
+                                            }}
+                                            className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-blue-500"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Timer de Descanso */}
+                            <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800">
+                                <h3 className="text-sm font-black uppercase text-blue-400 mb-4">Tiempo de Descanso</h3>
+                                <div className="flex gap-2">
+                                    {[120, 150, 180, 210, 240].map(seconds => (
+                                        <button
+                                            key={seconds}
+                                            onClick={() => {
+                                                setTargetTime(seconds);
+                                                saveData({targetTime: seconds});
+                                            }}
+                                            className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all ${
+                                                targetTime === seconds 
+                                                    ? 'bg-blue-600 text-white' 
+                                                    : 'bg-slate-950 text-slate-500 border border-slate-800'
+                                            }`}
+                                        >
+                                            {Math.floor(seconds / 60)}:{(seconds % 60).toString().padStart(2, '0')}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Reiniciar Semana */}
+                            <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800">
+                                <h3 className="text-sm font-black uppercase text-orange-400 mb-3">Reiniciar Progreso</h3>
+                                <p className="text-xs text-slate-500 mb-4">Borra las series completadas de la semana actual</p>
+                                <button
+                                    onClick={() => {
+                                        if (confirm('¿Seguro que querés reiniciar la semana actual?')) {
+                                            const newSets = {};
+                                            Object.keys(completedSets).forEach(key => {
+                                                if (!key.startsWith(`${currentWeek}-`)) {
+                                                    newSets[key] = completedSets[key];
+                                                }
+                                            });
+                                            setCompletedSets(newSets);
+                                            saveData({completedSets: newSets});
+                                        }
+                                    }}
+                                    className="w-full bg-orange-900/20 border border-orange-900 text-orange-400 p-3 rounded-lg font-bold text-sm active:scale-95 transition-all"
+                                >
+                                    Reiniciar Semana {currentWeek}
+                                </button>
+                            </div>
+
+                            {/* Cerrar Sesión */}
+                            <button
+                                onClick={() => {
+                                    if (confirm('¿Seguro que querés salir?')) {
+                                        localStorage.removeItem('pablo_session');
+                                        window.location.reload();
+                                    }
+                                }}
+                                className="w-full bg-red-900/20 border border-red-900 text-red-400 p-4 rounded-lg font-bold uppercase text-sm active:scale-95 transition-all"
+                            >
+                                Cerrar Sesión
+                            </button>
+                        </div>
+                    </div>
+                );
+            };
+
+            // Vista Principal de Workout
+            const WorkoutView = () => (
+                <div className="max-w-md mx-auto min-h-screen pb-24 fade-in">
+                    <header className="sticky top-0 z-50 bg-slate-950/95 backdrop-blur-md p-4 flex justify-between items-center border-b border-slate-800">
+                        <i className="fas fa-dumbbell text-blue-500 text-xl"></i>
+                        <div className="flex items-center gap-3 bg-slate-900 rounded-full px-4 py-2 border border-slate-700">
+                            <button 
+                                onClick={() => { 
+                                    const w = Math.max(1, currentWeek-1); 
+                                    setCurrentWeek(w); 
+                                    saveData({currentWeek: w}); 
+                                }}
+                                className="active:scale-90 transition-transform"
+                            >
+                                <i className="fas fa-chevron-left text-xs text-slate-400 p-1"></i>
+                            </button>
+                            <span className="font-black text-sm uppercase italic w-16 text-center">Sem {currentWeek}</span>
+                            <button 
+                                onClick={() => { 
+                                    const w = Math.min(24, currentWeek+1); 
+                                    setCurrentWeek(w); 
+                                    saveData({currentWeek: w}); 
+                                }}
+                                className="active:scale-90 transition-transform"
+                            >
+                                <i className="fas fa-chevron-right text-xs text-slate-400 p-1"></i>
+                            </button>
+                        </div>
+                        <i className="fas fa-save text-emerald-600 text-sm"></i>
+                    </header>
+
+                    <main className="p-4 space-y-6">
+                        {/* Stats Cards */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-4 rounded-2xl border border-slate-800 shadow-xl">
+                                <p className="text-[10px] uppercase font-black text-slate-500 mb-1">Carga Actual</p>
+                                <p className="text-2xl font-black text-emerald-400 italic">{stats.sets}x{stats.reps}</p>
+                                <p className="text-[9px] text-slate-600 font-bold mt-1">
+                                    {stats.increment > 0 ? `+${stats.increment}kg base` : 'Peso base'}
+                                </p>
+                                <p className="text-[8px] text-blue-500 font-bold mt-1">
+                                    {((currentWeek - 1) % 4) === 3 ? '¡Próxima sem +2.5kg!' : `Sem ${((currentWeek - 1) % 4) + 1} de 4`}
+                                </p>
+                            </div>
+                            <div className={`bg-gradient-to-br from-slate-900 to-slate-950 p-4 rounded-2xl border transition-all duration-300 shadow-xl ${isActive ? 'border-blue-500 shadow-blue-600/20' : 'border-slate-800'}`}>
+                                <p className="text-[10px] uppercase font-black text-blue-400 mb-1">Descanso</p>
+                                <p className="text-2xl font-black italic text-white">
+                                    {timer > 0 ? `${Math.floor(timer/60)}:${(timer%60).toString().padStart(2,'0')}` : "0:00"}
+                                </p>
+                                <div className="flex gap-1 mt-2">
+                                    <button
+                                        onClick={startTimer}
+                                        className="flex-1 bg-blue-600/20 text-blue-400 text-[9px] font-bold py-1 rounded active:scale-95 transition-all"
+                                    >
+                                        INICIAR
+                                    </button>
+                                    <button
+                                        onClick={() => setIsActive(false)}
+                                        className="flex-1 bg-slate-950 text-slate-600 text-[9px] font-bold py-1 rounded active:scale-95 transition-all"
+                                    >
+                                        PARAR
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Rutina */}
+                        {routine.map(day => (
+                            <section key={day.id} className="space-y-4">
+                                <h2 className="text-xl font-black uppercase italic border-l-4 border-blue-500 pl-3">{day.title}</h2>
+                                {day.ex.map((e, i) => (
+                                    <div key={i} className="bg-gradient-to-br from-slate-900 to-slate-950 p-5 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h3 className="font-black text-lg uppercase italic text-white leading-none">{e.name}</h3>
+                                                <p className="text-[10px] font-bold text-blue-400 mt-2 uppercase tracking-widest">
+                                                    Peso: {typeof e.w === 'number' ? e.w + 'kg' : e.w} • {e.s}x{e.r}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Warmup */}
+                                        {e.wu && (
+                                            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                                                {[0.5, 0.7, 0.9].map((pct, wi) => {
+                                                    const key = `${currentWeek}-${day.id}-${e.name}-warmup-${wi}`;
+                                                    const done = completedSets[key];
+                                                    return (
+                                                        <button 
+                                                            key={wi} 
+                                                            onClick={() => toggleSet(day.id, e.name, wi, true)} 
+                                                            className={`shrink-0 px-4 py-2 rounded-full text-[10px] font-black border transition-all active:scale-90 ${done ? 'bg-orange-500 border-orange-400 text-white shadow-lg' : 'bg-slate-950 border-slate-700 text-slate-500'}`}
+                                                        >
+                                                            {Math.round(e.w * pct)}kg
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                        
+                                        {/* Work Sets */}
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {Array.from({length: e.s}).map((_, si) => {
+                                                const key = `${currentWeek}-${day.id}-${e.name}-work-${si}`;
+                                                const done = completedSets[key];
+                                                return (
+                                                    <button 
+                                                        key={si} 
+                                                        onClick={() => toggleSet(day.id, e.name, si)} 
+                                                        className={`aspect-square rounded-2xl flex items-center justify-center font-black text-xl border-2 transition-all active:scale-90 ${done ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg shadow-emerald-500/30 pulse-success' : 'bg-slate-950 border-slate-700 text-slate-600'}`}
+                                                    >
+                                                        {done ? <i className="fas fa-check"></i> : si + 1}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </section>
+                        ))}
+                    </main>
+                </div>
+            );
+
+            return (
+                <>
+                    {currentView === 'workout' && <WorkoutView />}
+                    {currentView === 'history' && <HistoryView />}
+                    {currentView === 'settings' && <SettingsView />}
+
+                    {/* Bottom Navigation */}
+                    <nav className="fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 p-3 flex justify-around items-center max-w-md mx-auto">
+                        <button
+                            onClick={() => setCurrentView('workout')}
+                            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${currentView === 'workout' ? 'text-blue-400' : 'text-slate-600'}`}
+                        >
+                            <i className="fas fa-dumbbell text-lg"></i>
+                            <span className="text-[9px] font-black uppercase">Entreno</span>
+                        </button>
+                        <button
+                            onClick={() => setCurrentView('history')}
+                            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${currentView === 'history' ? 'text-emerald-400' : 'text-slate-600'}`}
+                        >
+                            <i className="fas fa-clipboard-list text-lg"></i>
+                            <span className="text-[9px] font-black uppercase">Historial</span>
+                        </button>
+                        <button
+                            onClick={() => setCurrentView('settings')}
+                            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${currentView === 'settings' ? 'text-blue-400' : 'text-slate-600'}`}
+                        >
+                            <i className="fas fa-cog text-lg"></i>
+                            <span className="text-[9px] font-black uppercase">Config</span>
+                        </button>
+                    </nav>
+
+                    {/* Install Prompt */}
+                    {showInstallPrompt && (
+                        <div className="fixed bottom-20 left-4 right-4 max-w-md mx-auto install-prompt">
+                            <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-4 rounded-2xl shadow-2xl border border-blue-400/30">
+                                <div className="flex items-start gap-3">
+                                    <i className="fas fa-mobile-alt text-white text-2xl mt-1"></i>
+                                    <div className="flex-1">
+                                        <h3 className="font-black text-white text-sm mb-1">Instalá la App</h3>
+                                        <p className="text-blue-100 text-xs mb-3">Agregala a tu pantalla de inicio para usarla como una app nativa</p>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={handleInstall}
+                                                className="bg-white text-blue-600 px-4 py-2 rounded-lg font-black text-xs uppercase active:scale-95 transition-all"
+                                            >
+                                                Instalar
+                                            </button>
+                                            <button
+                                                onClick={() => setShowInstallPrompt(false)}
+                                                className="bg-blue-700/50 text-white px-4 py-2 rounded-lg font-bold text-xs active:scale-95 transition-all"
+                                            >
+                                                Ahora no
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+
+        // Service Worker para funcionalidad offline
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const swCode = `
+                    const CACHE_NAME = 'entreno-pablo-v1';
+                    const urlsToCache = ['/'];
+                    
+                    self.addEventListener('install', event => {
+                        event.waitUntil(
+                            caches.open(CACHE_NAME)
+                                .then(cache => cache.addAll(urlsToCache))
+                        );
+                    });
+                    
+                    self.addEventListener('fetch', event => {
+                        event.respondWith(
+                            caches.match(event.request)
+                                .then(response => response || fetch(event.request))
+                        );
+                    });
+                `;
+                
+                const blob = new Blob([swCode], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+                
+                navigator.serviceWorker.register(swUrl)
+                    .then(() => console.log('Service Worker registrado'))
+                    .catch(err => console.log('Error SW:', err));
+            });
+        }
+    </script>
+</body>
+</html>
