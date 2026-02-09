@@ -39,6 +39,9 @@
         
         .pulse-success { animation: pulse-green 1s ease-in-out; }
         
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .animate-spin { animation: spin 1s linear infinite; }
+        
         #loader {
             display: flex;
             flex-direction: column;
@@ -60,10 +63,6 @@
             from { transform: translateY(100%); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
-        
-        .chart-bar {
-            transition: all 0.3s ease-out;
-        }
     </style>
 </head>
 <body>
@@ -76,6 +75,9 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
+
+        // URL del Google Apps Script
+        const SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbz3siWBIiF9wKtMdlYgkrcRkuVuabN85fRv-Y0ntXbuu7AysFi04jqvGnUqA_6r7-kI/exec';
 
         function App() {
             const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -91,20 +93,74 @@
             
             const [timer, setTimer] = useState(0);
             const [isActive, setIsActive] = useState(false);
-            const [targetTime, setTargetTime] = useState(180); // 3 minutos por defecto
+            const [targetTime, setTargetTime] = useState(180);
             
             const [showInstallPrompt, setShowInstallPrompt] = useState(false);
             const [deferredPrompt, setDeferredPrompt] = useState(null);
-            const [currentView, setCurrentView] = useState('workout'); // 'workout', 'history', 'settings'
+            const [currentView, setCurrentView] = useState('workout');
+            
+            const [syncStatus, setSyncStatus] = useState('idle'); // idle, syncing, success, error
+            const [lastSync, setLastSync] = useState(null);
             
             const timerInterval = useRef(null);
+
+            // Función para sincronizar con Google Sheets
+            const syncToSheets = async (data) => {
+                try {
+                    setSyncStatus('syncing');
+                    const response = await fetch(SHEETS_API_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data)
+                    });
+                    
+                    setSyncStatus('success');
+                    setLastSync(new Date());
+                    setTimeout(() => setSyncStatus('idle'), 2000);
+                    return true;
+                } catch (error) {
+                    console.error('Error sync:', error);
+                    setSyncStatus('error');
+                    setTimeout(() => setSyncStatus('idle'), 3000);
+                    return false;
+                }
+            };
+
+            // Función para registrar una serie completada
+            const logSetToSheets = async (dayId, exerciseName, setNumber, isWarmup, weight, totalSets, reps, completed) => {
+                await syncToSheets({
+                    action: 'log_set',
+                    week: currentWeek,
+                    day: dayId,
+                    exercise: exerciseName,
+                    weight: weight,
+                    totalSets: totalSets,
+                    reps: reps,
+                    setNumber: setNumber + 1,
+                    isWarmup: isWarmup,
+                    completed: completed
+                });
+            };
+
+            // Función para sincronizar todo
+            const syncAllToSheets = async () => {
+                await syncToSheets({
+                    action: 'sync_all',
+                    currentWeek: currentWeek,
+                    weights: initialWeights,
+                    history: workoutHistory,
+                    completedSets: completedSets
+                });
+            };
 
             // PWA Install Handler
             useEffect(() => {
                 const handler = (e) => {
                     e.preventDefault();
                     setDeferredPrompt(e);
-                    // Solo mostrar si no está instalado
                     if (!window.matchMedia('(display-mode: standalone)').matches) {
                         setTimeout(() => setShowInstallPrompt(true), 2000);
                     }
@@ -131,6 +187,7 @@
                     const savedNotes = localStorage.getItem('pablo_workoutNotes');
                     const savedHistory = localStorage.getItem('pablo_workoutHistory');
                     const savedTargetTime = localStorage.getItem('pablo_targetTime');
+                    const savedLastSync = localStorage.getItem('pablo_lastSync');
 
                     if (savedSession === 'active') setIsLoggedIn(true);
                     if (savedWeek) setCurrentWeek(parseInt(savedWeek));
@@ -139,6 +196,7 @@
                     if (savedNotes) setWorkoutNotes(JSON.parse(savedNotes));
                     if (savedHistory) setWorkoutHistory(JSON.parse(savedHistory));
                     if (savedTargetTime) setTargetTime(parseInt(savedTargetTime));
+                    if (savedLastSync) setLastSync(new Date(savedLastSync));
                 } catch (err) {
                     console.error('Error cargando datos:', err);
                 }
@@ -171,22 +229,19 @@
                 }
             };
 
-            // Timer mejorado
+            // Timer
             useEffect(() => {
                 if (isActive && timer > 0) {
                     timerInterval.current = setInterval(() => {
                         setTimer(t => {
                             if (t <= 1) {
                                 setIsActive(false);
-                                // Vibración al terminar (si está disponible)
                                 if ('vibrate' in navigator) {
                                     navigator.vibrate([200, 100, 200]);
                                 }
-                                // Notificación
                                 if ('Notification' in window && Notification.permission === 'granted') {
                                     new Notification('¡Descanso terminado!', {
                                         body: 'Es hora de la siguiente serie',
-                                        icon: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext y=\'50%\' x=\'50%\' font-size=\'60\' text-anchor=\'middle\' dominant-baseline=\'middle\'%3E💪%3C/text%3E%3C/svg%3E',
                                         vibrate: [200, 100, 200]
                                     });
                                 }
@@ -206,24 +261,24 @@
             const startTimer = () => {
                 setTimer(targetTime);
                 setIsActive(true);
-                // Solicitar permiso de notificaciones
                 if ('Notification' in window && Notification.permission === 'default') {
                     Notification.requestPermission();
                 }
             };
 
-            const toggleSet = (dayId, exerciseName, setIndex, isWarmup = false) => {
+            const toggleSet = async (dayId, exerciseName, setIndex, isWarmup = false, weight = 0, totalSets = 0, reps = 0) => {
                 const key = `${currentWeek}-${dayId}-${exerciseName}-${isWarmup ? 'warmup' : 'work'}-${setIndex}`;
                 const newCompletedSets = { ...completedSets, [key]: !completedSets[key] };
                 setCompletedSets(newCompletedSets);
                 saveData({ completedSets: newCompletedSets });
                 
-                // Si completó una serie de trabajo, iniciar timer automáticamente
+                // Registrar en Google Sheets
+                await logSetToSheets(dayId, exerciseName, setIndex, isWarmup, weight, totalSets, reps, !completedSets[key]);
+                
                 if (!isWarmup && !completedSets[key]) {
                     startTimer();
                 }
                 
-                // Registrar en historial
                 if (!completedSets[key]) {
                     const newHistory = [...workoutHistory, {
                         date: new Date().toISOString(),
@@ -239,20 +294,18 @@
             };
 
             const stats = useMemo(() => {
-                // Progresión: Semana 1-4 (5x5, 6x6, 7x7, 8x8), luego repite con +2.5kg
-                const weekInCycle = ((currentWeek - 1) % 4) + 1; // 1, 2, 3, 4
-                const cycleNumber = Math.floor((currentWeek - 1) / 4); // 0, 1, 2, 3, 4, 5...
+                const weekInCycle = ((currentWeek - 1) % 4) + 1;
+                const cycleNumber = Math.floor((currentWeek - 1) / 4);
                 
-                // Sets y reps según semana en el ciclo
                 const setsReps = [
-                    { sets: 5, reps: 5 },  // Semana 1
-                    { sets: 6, reps: 6 },  // Semana 2
-                    { sets: 7, reps: 7 },  // Semana 3
-                    { sets: 8, reps: 8 }   // Semana 4
+                    { sets: 5, reps: 5 },
+                    { sets: 6, reps: 6 },
+                    { sets: 7, reps: 7 },
+                    { sets: 8, reps: 8 }
                 ];
                 
                 const current = setsReps[weekInCycle - 1];
-                const increment = cycleNumber * 2.5; // +2.5kg por cada ciclo completo
+                const increment = cycleNumber * 2.5;
                 
                 return {
                     sets: current.sets,
@@ -331,7 +384,6 @@
                 ]}
             ];
 
-            // Vista de Historial
             const HistoryView = () => {
                 const groupedHistory = useMemo(() => {
                     const groups = {};
@@ -372,13 +424,40 @@
                 );
             };
 
-            // Vista de Configuración
             const SettingsView = () => {
                 return (
                     <div className="max-w-md mx-auto min-h-screen pb-24 fade-in p-4">
                         <h2 className="text-2xl font-black uppercase italic mb-6 border-l-4 border-blue-500 pl-3">Configuración</h2>
                         
                         <div className="space-y-6">
+                            {/* Google Sheets Sync */}
+                            <div className="bg-gradient-to-br from-emerald-900/20 to-emerald-950/20 p-5 rounded-2xl border border-emerald-800/50">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <i className="fas fa-table text-emerald-400 text-xl"></i>
+                                        <h3 className="text-sm font-black uppercase text-emerald-400">Google Sheets</h3>
+                                    </div>
+                                    {syncStatus === 'syncing' && <i className="fas fa-sync animate-spin text-blue-400"></i>}
+                                    {syncStatus === 'success' && <i className="fas fa-check text-emerald-400"></i>}
+                                    {syncStatus === 'error' && <i className="fas fa-exclamation-triangle text-red-400"></i>}
+                                </div>
+                                <p className="text-xs text-slate-400 mb-3">
+                                    Sincronizado automáticamente cada vez que completás una serie
+                                </p>
+                                {lastSync && (
+                                    <p className="text-[10px] text-slate-600 mb-3">
+                                        Última sync: {lastSync.toLocaleString('es-AR')}
+                                    </p>
+                                )}
+                                <button
+                                    onClick={syncAllToSheets}
+                                    disabled={syncStatus === 'syncing'}
+                                    className="w-full bg-emerald-600/20 border border-emerald-600 text-emerald-400 p-3 rounded-lg font-bold text-sm active:scale-95 transition-all disabled:opacity-50"
+                                >
+                                    {syncStatus === 'syncing' ? 'Sincronizando...' : 'Sincronizar Todo Ahora'}
+                                </button>
+                            </div>
+
                             {/* Pesos Iniciales */}
                             <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800">
                                 <h3 className="text-sm font-black uppercase text-blue-400 mb-4">Pesos Base (kg)</h3>
@@ -488,7 +567,6 @@
                 );
             };
 
-            // Vista Principal de Workout
             const WorkoutView = () => (
                 <div className="max-w-md mx-auto min-h-screen pb-24 fade-in">
                     <header className="sticky top-0 z-50 bg-slate-950/95 backdrop-blur-md p-4 flex justify-between items-center border-b border-slate-800">
@@ -516,7 +594,12 @@
                                 <i className="fas fa-chevron-right text-xs text-slate-400 p-1"></i>
                             </button>
                         </div>
-                        <i className="fas fa-save text-emerald-600 text-sm"></i>
+                        <div className="flex items-center gap-2">
+                            {syncStatus === 'syncing' && <i className="fas fa-sync animate-spin text-blue-400 text-sm"></i>}
+                            {syncStatus === 'success' && <i className="fas fa-cloud-upload-alt text-emerald-400 text-sm"></i>}
+                            {syncStatus === 'error' && <i className="fas fa-exclamation-circle text-red-400 text-sm"></i>}
+                            {syncStatus === 'idle' && <i className="fas fa-save text-emerald-600 text-sm"></i>}
+                        </div>
                     </header>
 
                     <main className="p-4 space-y-6">
@@ -575,13 +658,14 @@
                                                 {[0.5, 0.7, 0.9].map((pct, wi) => {
                                                     const key = `${currentWeek}-${day.id}-${e.name}-warmup-${wi}`;
                                                     const done = completedSets[key];
+                                                    const warmupWeight = Math.round(e.w * pct);
                                                     return (
                                                         <button 
                                                             key={wi} 
-                                                            onClick={() => toggleSet(day.id, e.name, wi, true)} 
+                                                            onClick={() => toggleSet(day.id, e.name, wi, true, warmupWeight, e.s, e.r)} 
                                                             className={`shrink-0 px-4 py-2 rounded-full text-[10px] font-black border transition-all active:scale-90 ${done ? 'bg-orange-500 border-orange-400 text-white shadow-lg' : 'bg-slate-950 border-slate-700 text-slate-500'}`}
                                                         >
-                                                            {Math.round(e.w * pct)}kg
+                                                            {warmupWeight}kg
                                                         </button>
                                                     );
                                                 })}
@@ -596,7 +680,7 @@
                                                 return (
                                                     <button 
                                                         key={si} 
-                                                        onClick={() => toggleSet(day.id, e.name, si)} 
+                                                        onClick={() => toggleSet(day.id, e.name, si, false, e.w, e.s, e.r)} 
                                                         className={`aspect-square rounded-2xl flex items-center justify-center font-black text-xl border-2 transition-all active:scale-90 ${done ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg shadow-emerald-500/30 pulse-success' : 'bg-slate-950 border-slate-700 text-slate-600'}`}
                                                     >
                                                         {done ? <i className="fas fa-check"></i> : si + 1}
@@ -678,11 +762,11 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
 
-        // Service Worker para funcionalidad offline
+        // Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 const swCode = `
-                    const CACHE_NAME = 'entreno-pablo-v1';
+                    const CACHE_NAME = 'entreno-pablo-v2';
                     const urlsToCache = ['/'];
                     
                     self.addEventListener('install', event => {
