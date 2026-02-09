@@ -7,7 +7,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Entreno Pablo">
-    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkVudHJlbm8gUGFibG8iLAogICJzaG9ydF9uYW1lIjogIkVudHJlbm8iLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiIzAyMDYxNyIsCiAgInRoZW1lX2NvbG9yIjogIiMwMjA2MTciLAogICJpY29ucyI6IFsKICAgIHsKICAgICAgInNyYyI6ICJkYXRhOmltYWdlL3N2Zyt4bWwsJTNDc3ZnJTIweG1sbnMlM0QnaHR0cCUzQSUyRiUyRnd3dy53My5vcmclMkYyMDAwJTJGc3ZnJyUyMHZpZXdCb3glM0QnMCUyMDAlMjA1MTIlMjA1MTInJTNFJTNDcmVjdCUyMGZpbGwlM0QnJTIzMDIwNjE3JyUyMHdpZHRoJTNEJzUxMicluMjBoZWlnaHQlM0QnNTEyJyUyRiUzRSUzQ3RleHQlMjB4JTNEJzUwJTI1JyUyMHklM0QnNTAlMjUnJTIwZm9udC1zaXplJTNEJzI1MCclMjBmaWxsJTNEJyUyMzM4NDNmZiclMjB0ZXh0LWFuY2hvciUzRCdtaWRkbGUnJTIwZG9taW5hbnQtYmFzZWxpbmUlM0QnbWlkZGxlJyUzRSVGMCU5RiU4QiU5OSUzQyUyRnRleHQlM0UlM0MlMkZzdmclM0UiLAogICAgICAic2l6ZXMiOiAiNTEyeDUxMiIsCiAgICAgICJ0eXBlIjogImltYWdlL3N2Zyt4bWwiCiAgICB9CiAgXQp9">
     <title>Powerbuilding 6M - Pablo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -55,7 +54,7 @@
 
         .btn-active:active { transform: scale(0.95); }
         
-        .install-prompt {
+        .install-prompt, .modal-overlay {
             animation: slideUp 0.4s ease-out;
         }
         
@@ -74,10 +73,34 @@
     </div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef } = React;
+        const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
-        // URL del Google Apps Script
+        // URL del Google Apps Script - LA MISMA QUE YA TENÉS
         const SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbz3siWBIiF9wKtMdlYgkrcRkuVuabN85fRv-Y0ntXbuu7AysFi04jqvGnUqA_6r7-kI/exec';
+
+        // BASE DE DATOS DE ALIMENTOS (valores por 100g)
+        const FOOD_DATABASE = {
+            'pollo': { kcal: 165, protein: 31, carbs: 0, fat: 3.6 },
+            'carne': { kcal: 250, protein: 26, carbs: 0, fat: 15 },
+            'pescado': { kcal: 206, protein: 22, carbs: 0, fat: 12 },
+            'huevo': { kcal: 155, protein: 13, carbs: 1, fat: 11 },
+            'atun': { kcal: 132, protein: 28, carbs: 0, fat: 1 },
+            'arroz': { kcal: 130, protein: 2.7, carbs: 28, fat: 0.3 },
+            'pasta': { kcal: 131, protein: 5, carbs: 25, fat: 1.1 },
+            'papa': { kcal: 77, protein: 2, carbs: 17, fat: 0.1 },
+            'pan': { kcal: 265, protein: 9, carbs: 49, fat: 3.2 },
+            'avena': { kcal: 389, protein: 17, carbs: 66, fat: 7 },
+            'brocoli': { kcal: 34, protein: 2.8, carbs: 7, fat: 0.4 },
+            'espinaca': { kcal: 23, protein: 2.9, carbs: 3.6, fat: 0.4 },
+            'lechuga': { kcal: 15, protein: 1.4, carbs: 2.9, fat: 0.2 },
+            'tomate': { kcal: 18, protein: 0.9, carbs: 3.9, fat: 0.2 },
+            'leche': { kcal: 42, protein: 3.4, carbs: 5, fat: 1 },
+            'yogur': { kcal: 59, protein: 10, carbs: 3.6, fat: 0.4 },
+            'queso': { kcal: 402, protein: 25, carbs: 1.3, fat: 33 },
+            'banana': { kcal: 89, protein: 1.1, carbs: 23, fat: 0.3 },
+            'manzana': { kcal: 52, protein: 0.3, carbs: 14, fat: 0.2 },
+            'palta': { kcal: 160, protein: 2, carbs: 9, fat: 15 }
+        };
 
         function App() {
             const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -88,32 +111,56 @@
             const [currentWeek, setCurrentWeek] = useState(1);
             const [completedSets, setCompletedSets] = useState({});
             const [initialWeights, setInitialWeights] = useState({ sentadilla: 100, muerto: 100, pecho: 80 });
-            const [workoutNotes, setWorkoutNotes] = useState({});
             const [workoutHistory, setWorkoutHistory] = useState([]);
             
             const [timer, setTimer] = useState(0);
-            const [isActive, setIsActive] = useState(false);
+            const [isTimerActive, setIsTimerActive] = useState(false);
             const [targetTime, setTargetTime] = useState(180);
             
             const [showInstallPrompt, setShowInstallPrompt] = useState(false);
             const [deferredPrompt, setDeferredPrompt] = useState(null);
             const [currentView, setCurrentView] = useState('workout');
             
-            const [syncStatus, setSyncStatus] = useState('idle'); // idle, syncing, success, error
+            const [syncStatus, setSyncStatus] = useState('idle');
             const [lastSync, setLastSync] = useState(null);
             
-            const timerInterval = useRef(null);
+            // ESTADOS ACTIVIDAD
+            const [runningActivities, setRunningActivities] = useState([]);
+            const [footballActivities, setFootballActivities] = useState([]);
+            const [showRunningModal, setShowRunningModal] = useState(false);
+            const [showFootballModal, setShowFootballModal] = useState(false);
+            
+            // ESTADOS NUTRICIÓN - NUEVOS
+            const [meals, setMeals] = useState([]);
+            const [showMealModal, setShowMealModal] = useState(false);
+            const [bodyGoals, setBodyGoals] = useState({
+                weightGoal: 0,
+                fatPercentGoal: 0,
+                musclePercentGoal: 0
+            });
+            
+            // ESTADOS MEDICIONES - NUEVOS
+            const [measurements, setMeasurements] = useState([]);
+            const [showMeasurementModal, setShowMeasurementModal] = useState(false);
+            
+            // ESTADOS HIDRATACIÓN - NUEVOS
+            const [waterIntake, setWaterIntake] = useState({});
+            const [waterGoal, setWaterGoal] = useState(3000);
+            
+            // ESTADOS BIENESTAR - NUEVOS
+            const [wellness, setWellness] = useState({});
+            const [showWellnessModal, setShowWellnessModal] = useState(false);
+            
+            const timerIntervalRef = useRef(null);
 
-            // Función para sincronizar con Google Sheets
-            const syncToSheets = async (data) => {
+            // Función sincronizar
+            const syncToSheets = useCallback(async (data) => {
                 try {
                     setSyncStatus('syncing');
-                    const response = await fetch(SHEETS_API_URL, {
+                    await fetch(SHEETS_API_URL, {
                         method: 'POST',
                         mode: 'no-cors',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(data)
                     });
                     
@@ -127,36 +174,9 @@
                     setTimeout(() => setSyncStatus('idle'), 3000);
                     return false;
                 }
-            };
+            }, []);
 
-            // Función para registrar una serie completada
-            const logSetToSheets = async (dayId, exerciseName, setNumber, isWarmup, weight, totalSets, reps, completed) => {
-                await syncToSheets({
-                    action: 'log_set',
-                    week: currentWeek,
-                    day: dayId,
-                    exercise: exerciseName,
-                    weight: weight,
-                    totalSets: totalSets,
-                    reps: reps,
-                    setNumber: setNumber + 1,
-                    isWarmup: isWarmup,
-                    completed: completed
-                });
-            };
-
-            // Función para sincronizar todo
-            const syncAllToSheets = async () => {
-                await syncToSheets({
-                    action: 'sync_all',
-                    currentWeek: currentWeek,
-                    weights: initialWeights,
-                    history: workoutHistory,
-                    completedSets: completedSets
-                });
-            };
-
-            // PWA Install Handler
+            // PWA Install
             useEffect(() => {
                 const handler = (e) => {
                     e.preventDefault();
@@ -172,73 +192,76 @@
             const handleInstall = async () => {
                 if (!deferredPrompt) return;
                 deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
+                await deferredPrompt.userChoice;
                 setDeferredPrompt(null);
                 setShowInstallPrompt(false);
             };
 
-            // Cargar datos al iniciar
+            // Cargar datos
             useEffect(() => {
                 try {
                     const savedSession = localStorage.getItem('pablo_session');
                     const savedWeek = localStorage.getItem('pablo_currentWeek');
                     const savedSets = localStorage.getItem('pablo_completedSets');
                     const savedWeights = localStorage.getItem('pablo_initialWeights');
-                    const savedNotes = localStorage.getItem('pablo_workoutNotes');
                     const savedHistory = localStorage.getItem('pablo_workoutHistory');
                     const savedTargetTime = localStorage.getItem('pablo_targetTime');
                     const savedLastSync = localStorage.getItem('pablo_lastSync');
+                    const savedRunning = localStorage.getItem('pablo_runningActivities');
+                    const savedFootball = localStorage.getItem('pablo_footballActivities');
+                    const savedMeals = localStorage.getItem('pablo_meals');
+                    const savedGoals = localStorage.getItem('pablo_bodyGoals');
+                    const savedMeasurements = localStorage.getItem('pablo_measurements');
+                    const savedWater = localStorage.getItem('pablo_waterIntake');
+                    const savedWaterGoal = localStorage.getItem('pablo_waterGoal');
+                    const savedWellness = localStorage.getItem('pablo_wellness');
 
                     if (savedSession === 'active') setIsLoggedIn(true);
                     if (savedWeek) setCurrentWeek(parseInt(savedWeek));
                     if (savedSets) setCompletedSets(JSON.parse(savedSets));
                     if (savedWeights) setInitialWeights(JSON.parse(savedWeights));
-                    if (savedNotes) setWorkoutNotes(JSON.parse(savedNotes));
                     if (savedHistory) setWorkoutHistory(JSON.parse(savedHistory));
                     if (savedTargetTime) setTargetTime(parseInt(savedTargetTime));
                     if (savedLastSync) setLastSync(new Date(savedLastSync));
+                    if (savedRunning) setRunningActivities(JSON.parse(savedRunning));
+                    if (savedFootball) setFootballActivities(JSON.parse(savedFootball));
+                    if (savedMeals) setMeals(JSON.parse(savedMeals));
+                    if (savedGoals) setBodyGoals(JSON.parse(savedGoals));
+                    if (savedMeasurements) setMeasurements(JSON.parse(savedMeasurements));
+                    if (savedWater) setWaterIntake(JSON.parse(savedWater));
+                    if (savedWaterGoal) setWaterGoal(parseInt(savedWaterGoal));
+                    if (savedWellness) setWellness(JSON.parse(savedWellness));
                 } catch (err) {
                     console.error('Error cargando datos:', err);
                 }
                 setLoading(false);
             }, []);
 
-            // Guardar datos automáticamente
-            const saveData = (updates = {}) => {
+            // Guardar datos
+            const saveData = useCallback((updates = {}) => {
                 try {
-                    if (updates.currentWeek !== undefined) {
-                        localStorage.setItem('pablo_currentWeek', updates.currentWeek);
-                    }
-                    if (updates.completedSets !== undefined) {
-                        localStorage.setItem('pablo_completedSets', JSON.stringify(updates.completedSets));
-                    }
-                    if (updates.initialWeights !== undefined) {
-                        localStorage.setItem('pablo_initialWeights', JSON.stringify(updates.initialWeights));
-                    }
-                    if (updates.workoutNotes !== undefined) {
-                        localStorage.setItem('pablo_workoutNotes', JSON.stringify(updates.workoutNotes));
-                    }
-                    if (updates.workoutHistory !== undefined) {
-                        localStorage.setItem('pablo_workoutHistory', JSON.stringify(updates.workoutHistory));
-                    }
-                    if (updates.targetTime !== undefined) {
-                        localStorage.setItem('pablo_targetTime', updates.targetTime);
-                    }
+                    Object.keys(updates).forEach(key => {
+                        const storageKey = `pablo_${key}`;
+                        const value = updates[key];
+                        if (typeof value === 'object') {
+                            localStorage.setItem(storageKey, JSON.stringify(value));
+                        } else {
+                            localStorage.setItem(storageKey, value);
+                        }
+                    });
                 } catch (err) {
                     console.error('Error guardando datos:', err);
                 }
-            };
+            }, []);
 
             // Timer
             useEffect(() => {
-                if (isActive && timer > 0) {
-                    timerInterval.current = setInterval(() => {
+                if (isTimerActive && timer > 0) {
+                    timerIntervalRef.current = setInterval(() => {
                         setTimer(t => {
                             if (t <= 1) {
-                                setIsActive(false);
-                                if ('vibrate' in navigator) {
-                                    navigator.vibrate([200, 100, 200]);
-                                }
+                                setIsTimerActive(false);
+                                if ('vibrate' in navigator) navigator.vibrate([200, 100, 200]);
                                 if ('Notification' in window && Notification.permission === 'granted') {
                                     new Notification('¡Descanso terminado!', {
                                         body: 'Es hora de la siguiente serie',
@@ -251,29 +274,43 @@
                         });
                     }, 1000);
                 } else {
-                    if (timerInterval.current) clearInterval(timerInterval.current);
+                    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
                 }
                 return () => {
-                    if (timerInterval.current) clearInterval(timerInterval.current);
+                    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
                 };
-            }, [isActive, timer]);
+            }, [isTimerActive, timer]);
 
-            const startTimer = () => {
+            const startTimer = useCallback(() => {
                 setTimer(targetTime);
-                setIsActive(true);
+                setIsTimerActive(true);
                 if ('Notification' in window && Notification.permission === 'default') {
                     Notification.requestPermission();
                 }
-            };
+            }, [targetTime]);
 
-            const toggleSet = async (dayId, exerciseName, setIndex, isWarmup = false, weight = 0, totalSets = 0, reps = 0) => {
+            const stopTimer = useCallback(() => {
+                setIsTimerActive(false);
+            }, []);
+
+            const toggleSet = useCallback(async (dayId, exerciseName, setIndex, isWarmup = false, weight = 0, totalSets = 0, reps = 0) => {
                 const key = `${currentWeek}-${dayId}-${exerciseName}-${isWarmup ? 'warmup' : 'work'}-${setIndex}`;
                 const newCompletedSets = { ...completedSets, [key]: !completedSets[key] };
                 setCompletedSets(newCompletedSets);
                 saveData({ completedSets: newCompletedSets });
                 
-                // Registrar en Google Sheets
-                await logSetToSheets(dayId, exerciseName, setIndex, isWarmup, weight, totalSets, reps, !completedSets[key]);
+                await syncToSheets({
+                    action: 'log_set',
+                    week: currentWeek,
+                    day: dayId,
+                    exercise: exerciseName,
+                    weight: weight,
+                    totalSets: totalSets,
+                    reps: reps,
+                    setNumber: setIndex + 1,
+                    isWarmup: isWarmup,
+                    completed: !completedSets[key]
+                });
                 
                 if (!isWarmup && !completedSets[key]) {
                     startTimer();
@@ -291,7 +328,7 @@
                     setWorkoutHistory(newHistory);
                     saveData({ workoutHistory: newHistory });
                 }
-            };
+            }, [currentWeek, completedSets, saveData, syncToSheets, startTimer, workoutHistory]);
 
             const stats = useMemo(() => {
                 const weekInCycle = ((currentWeek - 1) % 4) + 1;
@@ -313,6 +350,70 @@
                     increment: increment
                 };
             }, [currentWeek]);
+
+            // CALCULAR MACROS DE ALIMENTO - NUEVO
+            const calculateFoodMacros = useCallback((foodName, grams) => {
+                const normalized = foodName.toLowerCase().trim();
+                const food = FOOD_DATABASE[normalized];
+                
+                if (food) {
+                    const multiplier = grams / 100;
+                    return {
+                        kcal: Math.round(food.kcal * multiplier),
+                        protein: Math.round(food.protein * multiplier * 10) / 10,
+                        carbs: Math.round(food.carbs * multiplier * 10) / 10,
+                        fat: Math.round(food.fat * multiplier * 10) / 10
+                    };
+                }
+                return null;
+            }, []);
+
+            // NUTRICIÓN DIARIA - NUEVO
+            const getDailyNutrition = useCallback(() => {
+                const today = new Date().toDateString();
+                const todayMeals = meals.filter(m => new Date(m.date).toDateString() === today);
+                
+                return todayMeals.reduce((acc, meal) => ({
+                    kcal: acc.kcal + meal.kcal,
+                    protein: acc.protein + meal.protein,
+                    carbs: acc.carbs + meal.carbs,
+                    fat: acc.fat + meal.fat
+                }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+            }, [meals]);
+
+            // AGUA DEL DÍA - NUEVO
+            const getTodayWater = useCallback(() => {
+                const today = new Date().toDateString();
+                return waterIntake[today] || 0;
+            }, [waterIntake]);
+
+            // AGREGAR AGUA - NUEVO
+            const addWater = useCallback((ml) => {
+                const today = new Date().toDateString();
+                const newIntake = { ...waterIntake, [today]: (waterIntake[today] || 0) + ml };
+                setWaterIntake(newIntake);
+                saveData({ waterIntake: newIntake });
+                syncToSheets({
+                    action: 'log_water',
+                    date: new Date().toISOString(),
+                    ml: ml,
+                    total: newIntake[today]
+                });
+            }, [waterIntake, saveData, syncToSheets]);
+
+            // ÚLTIMA MEDICIÓN - NUEVO
+            const getLatestMeasurement = useCallback(() => {
+                if (measurements.length === 0) return null;
+                return measurements[measurements.length - 1];
+            }, [measurements]);
+
+            // CALCULAR OBJETIVOS - NUEVO
+            const calculateDerivedGoals = useCallback((weight, fatPercent, musclePercent) => {
+                return {
+                    fatKg: Math.round(weight * fatPercent / 100 * 10) / 10,
+                    muscleKg: Math.round(weight * musclePercent / 100 * 10) / 10
+                };
+            }, []);
 
             if (loading) {
                 return (
@@ -347,12 +448,14 @@
                                 <input 
                                     type="text" 
                                     placeholder="Usuario" 
+                                    value={loginForm.username}
                                     className="w-full bg-slate-950 border border-slate-800 p-4 rounded-xl outline-none focus:border-blue-500 text-white transition-colors" 
                                     onChange={e => setLoginForm({...loginForm, username: e.target.value})} 
                                 />
                                 <input 
                                     type="password" 
-                                    placeholder="Contraseña" 
+                                    placeholder="Contraseña"
+                                    value={loginForm.password}
                                     className="w-full bg-slate-950 border border-slate-800 p-4 rounded-xl outline-none focus:border-blue-500 text-white transition-colors" 
                                     onChange={e => setLoginForm({...loginForm, password: e.target.value})} 
                                 />
@@ -384,6 +487,742 @@
                 ]}
             ];
 
+            // MODALES - RUNNING (de v2, mantenido)
+            const RunningModal = () => {
+                const [formData, setFormData] = useState({ km: '', kcal: '' });
+                
+                return (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" onClick={() => setShowRunningModal(false)}>
+                        <div className="bg-slate-900 rounded-3xl p-6 max-w-sm w-full border border-slate-800 modal-overlay" onClick={e => e.stopPropagation()}>
+                            <h3 className="text-xl font-black uppercase italic mb-4 text-emerald-400">🏃 Agregar Running</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs text-slate-500 font-bold block mb-1">Kilómetros</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        value={formData.km}
+                                        onChange={e => setFormData({...formData, km: e.target.value})}
+                                        className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-emerald-500"
+                                        placeholder="5.5"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-slate-500 font-bold block mb-1">Calorías consumidas</label>
+                                    <input
+                                        type="number"
+                                        value={formData.kcal}
+                                        onChange={e => setFormData({...formData, kcal: e.target.value})}
+                                        className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-emerald-500"
+                                        placeholder="350"
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setShowRunningModal(false)}
+                                        className="flex-1 bg-slate-950 border border-slate-800 text-slate-400 p-3 rounded-lg font-bold text-sm active:scale-95 transition-all"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (formData.km && formData.kcal) {
+                                                const newActivity = {
+                                                    date: new Date().toISOString(),
+                                                    km: parseFloat(formData.km),
+                                                    kcal: parseInt(formData.kcal)
+                                                };
+                                                const newActivities = [...runningActivities, newActivity];
+                                                setRunningActivities(newActivities);
+                                                saveData({ runningActivities: newActivities });
+                                                syncToSheets({
+                                                    action: 'log_running',
+                                                    ...newActivity
+                                                });
+                                                setShowRunningModal(false);
+                                            }
+                                        }}
+                                        className="flex-1 bg-emerald-600 text-white p-3 rounded-lg font-bold text-sm active:scale-95 transition-all"
+                                    >
+                                        Guardar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // MODAL FÚTBOL (de v2, mantenido)
+            const FootballModal = () => {
+                const [formData, setFormData] = useState({ type: '7', duration: '60', intensity: 'media' });
+                
+                return (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" onClick={() => setShowFootballModal(false)}>
+                        <div className="bg-slate-900 rounded-3xl p-6 max-w-sm w-full border border-slate-800 modal-overlay" onClick={e => e.stopPropagation()}>
+                            <h3 className="text-xl font-black uppercase italic mb-4 text-orange-400">⚽ Agregar Fútbol</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs text-slate-500 font-bold block mb-2">Tipo de cancha</label>
+                                    <div className="flex gap-2">
+                                        {['7', '9', '11'].map(type => (
+                                            <button
+                                                key={type}
+                                                onClick={() => setFormData({...formData, type})}
+                                                className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all ${
+                                                    formData.type === type 
+                                                        ? 'bg-orange-600 text-white' 
+                                                        : 'bg-slate-950 text-slate-500 border border-slate-800'
+                                                }`}
+                                            >
+                                                {type}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-slate-500 font-bold block mb-1">Duración (minutos)</label>
+                                    <input
+                                        type="number"
+                                        value={formData.duration}
+                                        onChange={e => setFormData({...formData, duration: e.target.value})}
+                                        className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-orange-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-slate-500 font-bold block mb-2">Intensidad</label>
+                                    <div className="flex gap-2">
+                                        {['baja', 'media', 'alta'].map(intensity => (
+                                            <button
+                                                key={intensity}
+                                                onClick={() => setFormData({...formData, intensity})}
+                                                className={`flex-1 py-2 rounded-lg font-bold text-xs transition-all ${
+                                                    formData.intensity === intensity 
+                                                        ? 'bg-orange-600 text-white' 
+                                                        : 'bg-slate-950 text-slate-500 border border-slate-800'
+                                                }`}
+                                            >
+                                                {intensity.charAt(0).toUpperCase() + intensity.slice(1)}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setShowFootballModal(false)}
+                                        className="flex-1 bg-slate-950 border border-slate-800 text-slate-400 p-3 rounded-lg font-bold text-sm active:scale-95 transition-all"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const newActivity = {
+                                                date: new Date().toISOString(),
+                                                type: formData.type,
+                                                duration: parseInt(formData.duration),
+                                                intensity: formData.intensity
+                                            };
+                                            const newActivities = [...footballActivities, newActivity];
+                                            setFootballActivities(newActivities);
+                                            saveData({ footballActivities: newActivities });
+                                            syncToSheets({
+                                                action: 'log_football',
+                                                ...newActivity
+                                            });
+                                            setShowFootballModal(false);
+                                        }}
+                                        className="flex-1 bg-orange-600 text-white p-3 rounded-lg font-bold text-sm active:scale-95 transition-all"
+                                    >
+                                        Guardar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // MODAL COMIDA - NUEVO
+            const MealModal = () => {
+                const [formData, setFormData] = useState({ 
+                    food: '', 
+                    grams: '', 
+                    autoCalc: true,
+                    kcal: '',
+                    protein: '',
+                    carbs: '',
+                    fat: ''
+                });
+                
+                return (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" onClick={() => setShowMealModal(false)}>
+                        <div className="bg-slate-900 rounded-3xl p-6 max-w-sm w-full border border-slate-800 modal-overlay" onClick={e => e.stopPropagation()}>
+                            <h3 className="text-xl font-black uppercase italic mb-4 text-purple-400">🍽️ Agregar Comida</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs text-slate-500 font-bold block mb-1">Alimento</label>
+                                    <input
+                                        type="text"
+                                        value={formData.food}
+                                        onChange={e => setFormData({...formData, food: e.target.value})}
+                                        className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-purple-500"
+                                        placeholder="ej: pollo, arroz, banana"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-slate-500 font-bold block mb-1">Cantidad (gramos)</label>
+                                    <input
+                                        type="number"
+                                        value={formData.grams}
+                                        onChange={e => setFormData({...formData, grams: e.target.value})}
+                                        className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-purple-500"
+                                        placeholder="150"
+                                    />
+                                </div>
+                                
+                                <div className="flex items-center gap-2 p-3 bg-slate-950 rounded-lg">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={formData.autoCalc}
+                                        onChange={e => setFormData({...formData, autoCalc: e.target.checked})}
+                                        className="w-4 h-4"
+                                    />
+                                    <label className="text-xs text-slate-400 font-bold">Calcular automático</label>
+                                </div>
+
+                                {!formData.autoCalc && (
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className="text-xs text-slate-500 font-bold block mb-1">Kcal</label>
+                                            <input
+                                                type="number"
+                                                value={formData.kcal}
+                                                onChange={e => setFormData({...formData, kcal: e.target.value})}
+                                                className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-purple-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-slate-500 font-bold block mb-1">Proteína (g)</label>
+                                            <input
+                                                type="number"
+                                                value={formData.protein}
+                                                onChange={e => setFormData({...formData, protein: e.target.value})}
+                                                className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-purple-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-slate-500 font-bold block mb-1">Carbos (g)</label>
+                                            <input
+                                                type="number"
+                                                value={formData.carbs}
+                                                onChange={e => setFormData({...formData, carbs: e.target.value})}
+                                                className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-purple-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-slate-500 font-bold block mb-1">Grasas (g)</label>
+                                            <input
+                                                type="number"
+                                                value={formData.fat}
+                                                onChange={e => setFormData({...formData, fat: e.target.value})}
+                                                className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-purple-500"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setShowMealModal(false)}
+                                        className="flex-1 bg-slate-950 border border-slate-800 text-slate-400 p-3 rounded-lg font-bold text-sm active:scale-95 transition-all"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (formData.food && formData.grams) {
+                                                let macros;
+                                                if (formData.autoCalc) {
+                                                    macros = calculateFoodMacros(formData.food, parseFloat(formData.grams));
+                                                    if (!macros) {
+                                                        alert('Alimento no encontrado. Ingresá los valores manualmente.');
+                                                        return;
+                                                    }
+                                                } else {
+                                                    macros = {
+                                                        kcal: parseInt(formData.kcal) || 0,
+                                                        protein: parseFloat(formData.protein) || 0,
+                                                        carbs: parseFloat(formData.carbs) || 0,
+                                                        fat: parseFloat(formData.fat) || 0
+                                                    };
+                                                }
+                                                
+                                                const newMeal = {
+                                                    date: new Date().toISOString(),
+                                                    food: formData.food,
+                                                    grams: parseFloat(formData.grams),
+                                                    ...macros
+                                                };
+                                                const newMeals = [...meals, newMeal];
+                                                setMeals(newMeals);
+                                                saveData({ meals: newMeals });
+                                                syncToSheets({
+                                                    action: 'log_meal',
+                                                    ...newMeal
+                                                });
+                                                setShowMealModal(false);
+                                            }
+                                        }}
+                                        className="flex-1 bg-purple-600 text-white p-3 rounded-lg font-bold text-sm active:scale-95 transition-all"
+                                    >
+                                        Guardar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // MODAL MEDICIONES - NUEVO
+            const MeasurementModal = () => {
+                const [formData, setFormData] = useState({ 
+                    weight: '', 
+                    waist: '', 
+                    chest: '',
+                    arms: '',
+                    legs: ''
+                });
+                
+                return (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" onClick={() => setShowMeasurementModal(false)}>
+                        <div className="bg-slate-900 rounded-3xl p-6 max-w-sm w-full border border-slate-800 modal-overlay" onClick={e => e.stopPropagation()}>
+                            <h3 className="text-xl font-black uppercase italic mb-4 text-blue-400">📏 Nueva Medición</h3>
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="text-xs text-slate-500 font-bold block mb-1">Peso (kg)</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        value={formData.weight}
+                                        onChange={e => setFormData({...formData, weight: e.target.value})}
+                                        className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-blue-500"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="text-xs text-slate-500 font-bold block mb-1">Cintura (cm)</label>
+                                        <input
+                                            type="number"
+                                            value={formData.waist}
+                                            onChange={e => setFormData({...formData, waist: e.target.value})}
+                                            className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-500 font-bold block mb-1">Pecho (cm)</label>
+                                        <input
+                                            type="number"
+                                            value={formData.chest}
+                                            onChange={e => setFormData({...formData, chest: e.target.value})}
+                                            className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-500 font-bold block mb-1">Brazos (cm)</label>
+                                        <input
+                                            type="number"
+                                            value={formData.arms}
+                                            onChange={e => setFormData({...formData, arms: e.target.value})}
+                                            className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-500 font-bold block mb-1">Piernas (cm)</label>
+                                        <input
+                                            type="number"
+                                            value={formData.legs}
+                                            onChange={e => setFormData({...formData, legs: e.target.value})}
+                                            className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 pt-2">
+                                    <button
+                                        onClick={() => setShowMeasurementModal(false)}
+                                        className="flex-1 bg-slate-950 border border-slate-800 text-slate-400 p-3 rounded-lg font-bold text-sm active:scale-95 transition-all"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (formData.weight) {
+                                                const newMeasurement = {
+                                                    date: new Date().toISOString(),
+                                                    weight: parseFloat(formData.weight),
+                                                    waist: parseFloat(formData.waist) || 0,
+                                                    chest: parseFloat(formData.chest) || 0,
+                                                    arms: parseFloat(formData.arms) || 0,
+                                                    legs: parseFloat(formData.legs) || 0
+                                                };
+                                                const newMeasurements = [...measurements, newMeasurement];
+                                                setMeasurements(newMeasurements);
+                                                saveData({ measurements: newMeasurements });
+                                                syncToSheets({
+                                                    action: 'log_measurement',
+                                                    ...newMeasurement
+                                                });
+                                                setShowMeasurementModal(false);
+                                            }
+                                        }}
+                                        className="flex-1 bg-blue-600 text-white p-3 rounded-lg font-bold text-sm active:scale-95 transition-all"
+                                    >
+                                        Guardar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // MODAL BIENESTAR - NUEVO
+            const WellnessModal = () => {
+                const [formData, setFormData] = useState({ 
+                    sleep: '', 
+                    quality: 3,
+                    notes: ''
+                });
+                
+                return (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" onClick={() => setShowWellnessModal(false)}>
+                        <div className="bg-slate-900 rounded-3xl p-6 max-w-sm w-full border border-slate-800 modal-overlay" onClick={e => e.stopPropagation()}>
+                            <h3 className="text-xl font-black uppercase italic mb-4 text-cyan-400">😴 Bienestar Hoy</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs text-slate-500 font-bold block mb-1">Horas de sueño</label>
+                                    <input
+                                        type="number"
+                                        step="0.5"
+                                        value={formData.sleep}
+                                        onChange={e => setFormData({...formData, sleep: e.target.value})}
+                                        className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-cyan-500"
+                                        placeholder="7.5"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-slate-500 font-bold block mb-2">Calidad del sueño</label>
+                                    <div className="flex justify-center gap-2">
+                                        {[1,2,3,4,5].map(star => (
+                                            <button
+                                                key={star}
+                                                onClick={() => setFormData({...formData, quality: star})}
+                                                className="text-3xl active:scale-95 transition-all"
+                                            >
+                                                {star <= formData.quality ? '⭐' : '☆'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-slate-500 font-bold block mb-1">Notas / Sensaciones</label>
+                                    <textarea
+                                        value={formData.notes}
+                                        onChange={e => setFormData({...formData, notes: e.target.value})}
+                                        className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-cyan-500 h-20 resize-none"
+                                        placeholder="¿Cómo te sentís hoy?"
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setShowWellnessModal(false)}
+                                        className="flex-1 bg-slate-950 border border-slate-800 text-slate-400 p-3 rounded-lg font-bold text-sm active:scale-95 transition-all"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const today = new Date().toDateString();
+                                            const newWellness = {
+                                                ...wellness,
+                                                [today]: {
+                                                    date: new Date().toISOString(),
+                                                    sleep: parseFloat(formData.sleep) || 0,
+                                                    quality: formData.quality,
+                                                    notes: formData.notes
+                                                }
+                                            };
+                                            setWellness(newWellness);
+                                            saveData({ wellness: newWellness });
+                                            syncToSheets({
+                                                action: 'log_wellness',
+                                                ...newWellness[today]
+                                            });
+                                            setShowWellnessModal(false);
+                                        }}
+                                        className="flex-1 bg-cyan-600 text-white p-3 rounded-lg font-bold text-sm active:scale-95 transition-all"
+                                    >
+                                        Guardar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // VISTA NUTRICIÓN - NUEVA COMPLETA
+            const NutritionView = () => {
+                const dailyNutrition = getDailyNutrition();
+                const todayWater = getTodayWater();
+                const latestMeasurement = getLatestMeasurement();
+                const today = new Date().toDateString();
+                const todayWellness = wellness[today];
+                
+                return (
+                    <div className="max-w-md mx-auto min-h-screen pb-24 fade-in p-4 no-scrollbar overflow-y-auto">
+                        <h2 className="text-2xl font-black uppercase italic mb-6 border-l-4 border-purple-500 pl-3">Nutrición</h2>
+                        
+                        {/* MACROS DEL DÍA */}
+                        <div className="bg-gradient-to-br from-purple-900/20 to-purple-950/20 p-5 rounded-3xl border border-purple-800/50 mb-4">
+                            <h3 className="text-sm font-black uppercase text-purple-400 mb-3">🍽️ Hoy</h3>
+                            <div className="grid grid-cols-4 gap-2 mb-3">
+                                <div className="bg-slate-950/50 p-2 rounded-xl text-center">
+                                    <p className="text-lg font-black text-white">{Math.round(dailyNutrition.kcal)}</p>
+                                    <p className="text-[8px] text-slate-500 font-bold uppercase">Kcal</p>
+                                </div>
+                                <div className="bg-slate-950/50 p-2 rounded-xl text-center">
+                                    <p className="text-lg font-black text-red-400">{Math.round(dailyNutrition.protein)}g</p>
+                                    <p className="text-[8px] text-slate-500 font-bold uppercase">Prot</p>
+                                </div>
+                                <div className="bg-slate-950/50 p-2 rounded-xl text-center">
+                                    <p className="text-lg font-black text-blue-400">{Math.round(dailyNutrition.carbs)}g</p>
+                                    <p className="text-[8px] text-slate-500 font-bold uppercase">Carbs</p>
+                                </div>
+                                <div className="bg-slate-950/50 p-2 rounded-xl text-center">
+                                    <p className="text-lg font-black text-yellow-400">{Math.round(dailyNutrition.fat)}g</p>
+                                    <p className="text-[8px] text-slate-500 font-bold uppercase">Grasas</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowMealModal(true)}
+                                className="w-full bg-purple-600 text-white p-3 rounded-xl font-bold text-sm active:scale-95 transition-all"
+                            >
+                                + Agregar Comida
+                            </button>
+                        </div>
+
+                        {/* HIDRATACIÓN */}
+                        <div className="bg-gradient-to-br from-cyan-900/20 to-cyan-950/20 p-5 rounded-3xl border border-cyan-800/50 mb-4">
+                            <h3 className="text-sm font-black uppercase text-cyan-400 mb-3">💧 Hidratación</h3>
+                            <div className="flex items-end justify-between mb-3">
+                                <div>
+                                    <p className="text-3xl font-black text-white">{todayWater}ml</p>
+                                    <p className="text-xs text-slate-500">de {waterGoal}ml</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-lg font-bold text-cyan-400">{Math.round(todayWater/waterGoal*100)}%</p>
+                                </div>
+                            </div>
+                            <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden mb-3">
+                                <div 
+                                    className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-500"
+                                    style={{width: `${Math.min(todayWater/waterGoal*100, 100)}%`}}
+                                ></div>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={() => addWater(250)} className="flex-1 bg-cyan-900/30 border border-cyan-800 text-cyan-400 py-2 rounded-lg font-bold text-xs active:scale-95 transition-all">
+                                    +250ml
+                                </button>
+                                <button onClick={() => addWater(500)} className="flex-1 bg-cyan-900/30 border border-cyan-800 text-cyan-400 py-2 rounded-lg font-bold text-xs active:scale-95 transition-all">
+                                    +500ml
+                                </button>
+                                <button onClick={() => addWater(1000)} className="flex-1 bg-cyan-900/30 border border-cyan-800 text-cyan-400 py-2 rounded-lg font-bold text-xs active:scale-95 transition-all">
+                                    +1L
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* BIENESTAR */}
+                        <div className="bg-gradient-to-br from-indigo-900/20 to-indigo-950/20 p-5 rounded-3xl border border-indigo-800/50 mb-4">
+                            <h3 className="text-sm font-black uppercase text-indigo-400 mb-3">😴 Bienestar</h3>
+                            {todayWellness ? (
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-slate-400">Sueño:</span>
+                                        <span className="text-sm font-bold text-white">{todayWellness.sleep}h</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-slate-400">Calidad:</span>
+                                        <span className="text-sm">{'⭐'.repeat(todayWellness.quality)}</span>
+                                    </div>
+                                    {todayWellness.notes && (
+                                        <p className="text-xs text-slate-400 italic mt-2">"{todayWellness.notes}"</p>
+                                    )}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-slate-500 mb-3">No hay registro de hoy</p>
+                            )}
+                            <button
+                                onClick={() => setShowWellnessModal(true)}
+                                className="w-full bg-indigo-600 text-white p-2 rounded-lg font-bold text-xs active:scale-95 transition-all mt-3"
+                            >
+                                {todayWellness ? 'Actualizar' : 'Registrar Hoy'}
+                            </button>
+                        </div>
+
+                        {/* OBJETIVOS CORPORALES */}
+                        <div className="bg-gradient-to-br from-blue-900/20 to-blue-950/20 p-5 rounded-3xl border border-blue-800/50 mb-4">
+                            <h3 className="text-sm font-black uppercase text-blue-400 mb-3">🎯 Objetivos</h3>
+                            
+                            {latestMeasurement && (
+                                <div className="mb-4 p-3 bg-slate-950/50 rounded-xl">
+                                    <p className="text-xs text-slate-500 mb-2">Última medición: {new Date(latestMeasurement.date).toLocaleDateString('es-AR')}</p>
+                                    <p className="text-2xl font-black text-white">{latestMeasurement.weight} kg</p>
+                                </div>
+                            )}
+                            
+                            <div className="space-y-3">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="text-xs text-slate-500 font-bold block mb-1">Peso Objetivo (kg)</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={bodyGoals.weightGoal || ''}
+                                            onChange={e => {
+                                                const newGoals = {...bodyGoals, weightGoal: parseFloat(e.target.value) || 0};
+                                                setBodyGoals(newGoals);
+                                                saveData({bodyGoals: newGoals});
+                                            }}
+                                            className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-500 font-bold block mb-1">% Grasa Objetivo</label>
+                                        <input
+                                            type="number"
+                                            step="0.1"
+                                            value={bodyGoals.fatPercentGoal || ''}
+                                            onChange={e => {
+                                                const newGoals = {...bodyGoals, fatPercentGoal: parseFloat(e.target.value) || 0};
+                                                setBodyGoals(newGoals);
+                                                saveData({bodyGoals: newGoals});
+                                            }}
+                                            className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-slate-500 font-bold block mb-1">% Músculo Objetivo</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        value={bodyGoals.musclePercentGoal || ''}
+                                        onChange={e => {
+                                            const newGoals = {...bodyGoals, musclePercentGoal: parseFloat(e.target.value) || 0};
+                                            setBodyGoals(newGoals);
+                                            saveData({bodyGoals: newGoals});
+                                        }}
+                                        className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500"
+                                    />
+                                </div>
+                                
+                                {bodyGoals.weightGoal > 0 && bodyGoals.fatPercentGoal > 0 && bodyGoals.musclePercentGoal > 0 && (
+                                    <div className="grid grid-cols-2 gap-2 mt-3">
+                                        <div className="bg-red-900/20 p-2 rounded-lg text-center border border-red-800/30">
+                                            <p className="text-xs text-slate-500 mb-1">Grasa</p>
+                                            <p className="text-lg font-black text-red-400">
+                                                {calculateDerivedGoals(bodyGoals.weightGoal, bodyGoals.fatPercentGoal, 0).fatKg} kg
+                                            </p>
+                                        </div>
+                                        <div className="bg-emerald-900/20 p-2 rounded-lg text-center border border-emerald-800/30">
+                                            <p className="text-xs text-slate-500 mb-1">Músculo</p>
+                                            <p className="text-lg font-black text-emerald-400">
+                                                {calculateDerivedGoals(bodyGoals.weightGoal, 0, bodyGoals.musclePercentGoal).muscleKg} kg
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                <button
+                                    onClick={() => {
+                                        if (bodyGoals.weightGoal > 0) {
+                                            syncToSheets({
+                                                action: 'update_goals',
+                                                ...bodyGoals,
+                                                ...calculateDerivedGoals(bodyGoals.weightGoal, bodyGoals.fatPercentGoal, bodyGoals.musclePercentGoal)
+                                            });
+                                        }
+                                    }}
+                                    className="w-full bg-blue-600 text-white p-2 rounded-lg font-bold text-xs active:scale-95 transition-all"
+                                >
+                                    Guardar Objetivos
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* MEDICIONES */}
+                        <div className="bg-gradient-to-br from-yellow-900/20 to-yellow-950/20 p-5 rounded-3xl border border-yellow-800/50 mb-4">
+                            <h3 className="text-sm font-black uppercase text-yellow-400 mb-3">📏 Mediciones</h3>
+                            <button
+                                onClick={() => setShowMeasurementModal(true)}
+                                className="w-full bg-yellow-600 text-white p-3 rounded-xl font-bold text-sm active:scale-95 transition-all mb-3"
+                            >
+                                + Nueva Medición
+                            </button>
+                            
+                            {measurements.length > 0 && (
+                                <div className="space-y-2">
+                                    {measurements.slice(-3).reverse().map((m, i) => (
+                                        <div key={i} className="bg-slate-950/50 p-3 rounded-xl">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <p className="text-xs text-slate-500">{new Date(m.date).toLocaleDateString('es-AR')}</p>
+                                                <p className="text-lg font-black text-white">{m.weight} kg</p>
+                                            </div>
+                                            {(m.waist > 0 || m.chest > 0) && (
+                                                <div className="grid grid-cols-4 gap-1 text-xs">
+                                                    {m.waist > 0 && <div><span className="text-slate-600">Cin:</span> <span className="text-slate-400">{m.waist}cm</span></div>}
+                                                    {m.chest > 0 && <div><span className="text-slate-600">Pec:</span> <span className="text-slate-400">{m.chest}cm</span></div>}
+                                                    {m.arms > 0 && <div><span className="text-slate-600">Bra:</span> <span className="text-slate-400">{m.arms}cm</span></div>}
+                                                    {m.legs > 0 && <div><span className="text-slate-600">Pie:</span> <span className="text-slate-400">{m.legs}cm</span></div>}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* COMIDAS DEL DÍA */}
+                        {meals.filter(m => new Date(m.date).toDateString() === today).length > 0 && (
+                            <div>
+                                <h3 className="text-sm font-black uppercase text-slate-400 mb-3">Comidas de Hoy</h3>
+                                <div className="space-y-2">
+                                    {meals.filter(m => new Date(m.date).toDateString() === today).map((meal, i) => (
+                                        <div key={i} className="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                                            <div className="flex justify-between items-start mb-1">
+                                                <div>
+                                                    <p className="text-sm font-bold text-white capitalize">{meal.food}</p>
+                                                    <p className="text-xs text-slate-500">{meal.grams}g</p>
+                                                </div>
+                                                <p className="text-sm font-bold text-purple-400">{meal.kcal} kcal</p>
+                                            </div>
+                                            <div className="flex gap-3 text-xs mt-2">
+                                                <span className="text-red-400">P: {meal.protein}g</span>
+                                                <span className="text-blue-400">C: {meal.carbs}g</span>
+                                                <span className="text-yellow-400">G: {meal.fat}g</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // VISTA HISTORIAL (mantenida de v2)
             const HistoryView = () => {
                 const groupedHistory = useMemo(() => {
                     const groups = {};
@@ -424,6 +1263,7 @@
                 );
             };
 
+            // VISTA CONFIGURACIÓN (actualizada)
             const SettingsView = () => {
                 return (
                     <div className="max-w-md mx-auto min-h-screen pb-24 fade-in p-4">
@@ -442,20 +1282,13 @@
                                     {syncStatus === 'error' && <i className="fas fa-exclamation-triangle text-red-400"></i>}
                                 </div>
                                 <p className="text-xs text-slate-400 mb-3">
-                                    Sincronizado automáticamente cada vez que completás una serie
+                                    Sincronizado automáticamente
                                 </p>
                                 {lastSync && (
                                     <p className="text-[10px] text-slate-600 mb-3">
                                         Última sync: {lastSync.toLocaleString('es-AR')}
                                     </p>
                                 )}
-                                <button
-                                    onClick={syncAllToSheets}
-                                    disabled={syncStatus === 'syncing'}
-                                    className="w-full bg-emerald-600/20 border border-emerald-600 text-emerald-400 p-3 rounded-lg font-bold text-sm active:scale-95 transition-all disabled:opacity-50"
-                                >
-                                    {syncStatus === 'syncing' ? 'Sincronizando...' : 'Sincronizar Todo Ahora'}
-                                </button>
                             </div>
 
                             {/* Pesos Iniciales */}
@@ -504,26 +1337,45 @@
                                 </div>
                             </div>
 
-                            {/* Timer de Descanso */}
+                            {/* Timer + Meta Agua */}
                             <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800">
-                                <h3 className="text-sm font-black uppercase text-blue-400 mb-4">Tiempo de Descanso</h3>
-                                <div className="flex gap-2">
-                                    {[120, 150, 180, 210, 240].map(seconds => (
-                                        <button
-                                            key={seconds}
-                                            onClick={() => {
-                                                setTargetTime(seconds);
-                                                saveData({targetTime: seconds});
+                                <h3 className="text-sm font-black uppercase text-blue-400 mb-4">Configuraciones</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-xs text-slate-500 font-bold block mb-2">Tiempo de Descanso</label>
+                                        <div className="flex gap-2">
+                                            {[120, 150, 180, 210, 240].map(seconds => (
+                                                <button
+                                                    key={seconds}
+                                                    onClick={() => {
+                                                        setTargetTime(seconds);
+                                                        saveData({targetTime: seconds});
+                                                    }}
+                                                    className={`flex-1 py-2 rounded-lg font-bold text-xs transition-all ${
+                                                        targetTime === seconds 
+                                                            ? 'bg-blue-600 text-white' 
+                                                            : 'bg-slate-950 text-slate-500 border border-slate-800'
+                                                    }`}
+                                                >
+                                                    {Math.floor(seconds / 60)}:{(seconds % 60).toString().padStart(2, '0')}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-500 font-bold block mb-1">Meta de Agua Diaria (ml)</label>
+                                        <input
+                                            type="number"
+                                            step="100"
+                                            value={waterGoal}
+                                            onChange={e => {
+                                                const goal = parseInt(e.target.value) || 3000;
+                                                setWaterGoal(goal);
+                                                saveData({waterGoal: goal});
                                             }}
-                                            className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all ${
-                                                targetTime === seconds 
-                                                    ? 'bg-blue-600 text-white' 
-                                                    : 'bg-slate-950 text-slate-500 border border-slate-800'
-                                            }`}
-                                        >
-                                            {Math.floor(seconds / 60)}:{(seconds % 60).toString().padStart(2, '0')}
-                                        </button>
-                                    ))}
+                                            className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-blue-500"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
@@ -567,6 +1419,7 @@
                 );
             };
 
+            // VISTA WORKOUT (mantenida de v2)
             const WorkoutView = () => (
                 <div className="max-w-md mx-auto min-h-screen pb-24 fade-in">
                     <header className="sticky top-0 z-50 bg-slate-950/95 backdrop-blur-md p-4 flex justify-between items-center border-b border-slate-800">
@@ -603,7 +1456,6 @@
                     </header>
 
                     <main className="p-4 space-y-6">
-                        {/* Stats Cards */}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="bg-gradient-to-br from-slate-900 to-slate-950 p-4 rounded-2xl border border-slate-800 shadow-xl">
                                 <p className="text-[10px] uppercase font-black text-slate-500 mb-1">Carga Actual</p>
@@ -615,7 +1467,7 @@
                                     {((currentWeek - 1) % 4) === 3 ? '¡Próxima sem +2.5kg!' : `Sem ${((currentWeek - 1) % 4) + 1} de 4`}
                                 </p>
                             </div>
-                            <div className={`bg-gradient-to-br from-slate-900 to-slate-950 p-4 rounded-2xl border transition-all duration-300 shadow-xl ${isActive ? 'border-blue-500 shadow-blue-600/20' : 'border-slate-800'}`}>
+                            <div className={`bg-gradient-to-br from-slate-900 to-slate-950 p-4 rounded-2xl border transition-all duration-300 shadow-xl ${isTimerActive ? 'border-blue-500 shadow-blue-600/20' : 'border-slate-800'}`}>
                                 <p className="text-[10px] uppercase font-black text-blue-400 mb-1">Descanso</p>
                                 <p className="text-2xl font-black italic text-white">
                                     {timer > 0 ? `${Math.floor(timer/60)}:${(timer%60).toString().padStart(2,'0')}` : "0:00"}
@@ -628,7 +1480,7 @@
                                         INICIAR
                                     </button>
                                     <button
-                                        onClick={() => setIsActive(false)}
+                                        onClick={stopTimer}
                                         className="flex-1 bg-slate-950 text-slate-600 text-[9px] font-bold py-1 rounded active:scale-95 transition-all"
                                     >
                                         PARAR
@@ -637,7 +1489,6 @@
                             </div>
                         </div>
 
-                        {/* Rutina */}
                         {routine.map(day => (
                             <section key={day.id} className="space-y-4">
                                 <h2 className="text-xl font-black uppercase italic border-l-4 border-blue-500 pl-3">{day.title}</h2>
@@ -652,7 +1503,6 @@
                                             </div>
                                         </div>
                                         
-                                        {/* Warmup */}
                                         {e.wu && (
                                             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                                                 {[0.5, 0.7, 0.9].map((pct, wi) => {
@@ -672,7 +1522,6 @@
                                             </div>
                                         )}
                                         
-                                        {/* Work Sets */}
                                         <div className="grid grid-cols-4 gap-2">
                                             {Array.from({length: e.s}).map((_, si) => {
                                                 const key = `${currentWeek}-${day.id}-${e.name}-work-${si}`;
@@ -696,34 +1545,50 @@
                 </div>
             );
 
+            // RENDERIZADO PRINCIPAL Y NAVEGACIÓN
             return (
                 <>
                     {currentView === 'workout' && <WorkoutView />}
+                    {currentView === 'nutrition' && <NutritionView />}
                     {currentView === 'history' && <HistoryView />}
                     {currentView === 'settings' && <SettingsView />}
 
-                    {/* Bottom Navigation */}
-                    <nav className="fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 p-3 flex justify-around items-center max-w-md mx-auto">
+                    {/* Modales */}
+                    {showRunningModal && <RunningModal />}
+                    {showFootballModal && <FootballModal />}
+                    {showMealModal && <MealModal />}
+                    {showMeasurementModal && <MeasurementModal />}
+                    {showWellnessModal && <WellnessModal />}
+
+                    {/* Bottom Navigation - 4 PESTAÑAS */}
+                    <nav className="fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 p-2 flex justify-around items-center max-w-md mx-auto z-40">
                         <button
                             onClick={() => setCurrentView('workout')}
-                            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${currentView === 'workout' ? 'text-blue-400' : 'text-slate-600'}`}
+                            className={`flex flex-col items-center gap-1 px-2 py-2 rounded-xl transition-all ${currentView === 'workout' ? 'text-blue-400' : 'text-slate-600'}`}
                         >
-                            <i className="fas fa-dumbbell text-lg"></i>
-                            <span className="text-[9px] font-black uppercase">Entreno</span>
+                            <i className="fas fa-dumbbell text-base"></i>
+                            <span className="text-[8px] font-black uppercase">Entreno</span>
+                        </button>
+                        <button
+                            onClick={() => setCurrentView('nutrition')}
+                            className={`flex flex-col items-center gap-1 px-2 py-2 rounded-xl transition-all ${currentView === 'nutrition' ? 'text-purple-400' : 'text-slate-600'}`}
+                        >
+                            <i className="fas fa-utensils text-base"></i>
+                            <span className="text-[8px] font-black uppercase">Nutrición</span>
                         </button>
                         <button
                             onClick={() => setCurrentView('history')}
-                            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${currentView === 'history' ? 'text-emerald-400' : 'text-slate-600'}`}
+                            className={`flex flex-col items-center gap-1 px-2 py-2 rounded-xl transition-all ${currentView === 'history' ? 'text-emerald-400' : 'text-slate-600'}`}
                         >
-                            <i className="fas fa-clipboard-list text-lg"></i>
-                            <span className="text-[9px] font-black uppercase">Historial</span>
+                            <i className="fas fa-clipboard-list text-base"></i>
+                            <span className="text-[8px] font-black uppercase">Historial</span>
                         </button>
                         <button
                             onClick={() => setCurrentView('settings')}
-                            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${currentView === 'settings' ? 'text-blue-400' : 'text-slate-600'}`}
+                            className={`flex flex-col items-center gap-1 px-2 py-2 rounded-xl transition-all ${currentView === 'settings' ? 'text-blue-400' : 'text-slate-600'}`}
                         >
-                            <i className="fas fa-cog text-lg"></i>
-                            <span className="text-[9px] font-black uppercase">Config</span>
+                            <i className="fas fa-cog text-base"></i>
+                            <span className="text-[8px] font-black uppercase">Config</span>
                         </button>
                     </nav>
 
@@ -735,7 +1600,7 @@
                                     <i className="fas fa-mobile-alt text-white text-2xl mt-1"></i>
                                     <div className="flex-1">
                                         <h3 className="font-black text-white text-sm mb-1">Instalá la App</h3>
-                                        <p className="text-blue-100 text-xs mb-3">Agregala a tu pantalla de inicio para usarla como una app nativa</p>
+                                        <p className="text-blue-100 text-xs mb-3">Agregala a tu pantalla de inicio</p>
                                         <div className="flex gap-2">
                                             <button
                                                 onClick={handleInstall}
@@ -766,7 +1631,7 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 const swCode = `
-                    const CACHE_NAME = 'entreno-pablo-v2';
+                    const CACHE_NAME = 'entreno-pablo-v3';
                     const urlsToCache = ['/'];
                     
                     self.addEventListener('install', event => {
@@ -788,8 +1653,8 @@
                 const swUrl = URL.createObjectURL(blob);
                 
                 navigator.serviceWorker.register(swUrl)
-                    .then(() => console.log('Service Worker registrado'))
-                    .catch(err => console.log('Error SW:', err));
+                    .then(() => console.log('SW OK'))
+                    .catch(err => console.log('SW Error:', err));
             });
         }
     </script>
