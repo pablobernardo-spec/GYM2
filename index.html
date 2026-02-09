@@ -1012,6 +1012,47 @@
                             </button>
                         </div>
 
+                        {/* ACTIVIDAD FÍSICA */}
+                        <div className="bg-gradient-to-br from-emerald-900/20 to-orange-900/20 p-5 rounded-3xl border border-emerald-800/50 mb-4">
+                            <h3 className="text-sm font-black uppercase text-emerald-400 mb-3">🏃 Actividad Física</h3>
+                            
+                            <div className="grid grid-cols-2 gap-2 mb-3">
+                                <button
+                                    onClick={() => setShowRunningModal(true)}
+                                    className="bg-emerald-900/30 border border-emerald-800 text-emerald-400 p-3 rounded-xl font-bold text-sm active:scale-95 transition-all"
+                                >
+                                    🏃 Running
+                                </button>
+                                <button
+                                    onClick={() => setShowFootballModal(true)}
+                                    className="bg-orange-900/30 border border-orange-800 text-orange-400 p-3 rounded-xl font-bold text-sm active:scale-95 transition-all"
+                                >
+                                    ⚽ Fútbol
+                                </button>
+                            </div>
+                            
+                            {/* Últimas actividades */}
+                            {(runningActivities.length > 0 || footballActivities.length > 0) && (
+                                <div className="space-y-2">
+                                    <p className="text-xs text-slate-500 font-bold uppercase mb-2">Últimas actividades</p>
+                                    {[...runningActivities.slice(-3).reverse(), ...footballActivities.slice(-3).reverse()]
+                                        .sort((a, b) => new Date(b.date) - new Date(a.date))
+                                        .slice(0, 3)
+                                        .map((act, i) => (
+                                            <div key={i} className="bg-slate-950/50 p-2 rounded-lg flex justify-between items-center text-xs">
+                                                <span className="text-slate-400">
+                                                    {act.km ? \`🏃 ${act.km}km\` : \`⚽ ${act.type} (${act.duration}min)\`}
+                                                </span>
+                                                <span className="text-emerald-400 font-bold">
+                                                    {act.kcal || 0} kcal
+                                                </span>
+                                            </div>
+                                        ))
+                                    }
+                                </div>
+                            )}
+                        </div>
+
                         {/* HIDRATACIÓN */}
                         <div className="bg-gradient-to-br from-cyan-900/20 to-cyan-950/20 p-5 rounded-3xl border border-cyan-800/50 mb-4">
                             <h3 className="text-sm font-black uppercase text-cyan-400 mb-3">💧 Hidratación</h3>
