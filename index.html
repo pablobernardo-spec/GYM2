@@ -166,19 +166,30 @@
             const syncToSheets = useCallback(async (data) => {
                 try {
                     setSyncStatus('syncing');
-                    await fetch(SHEETS_API_URL, {
+                    console.log('📤 Enviando a Sheets:', data.action);
+                    
+                    const response = await fetch(SHEETS_API_URL, {
                         method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'text/plain' },
                         body: JSON.stringify(data)
                     });
                     
-                    setSyncStatus('success');
-                    setLastSync(new Date());
-                    setTimeout(() => setSyncStatus('idle'), 2000);
-                    return true;
+                    const result = await response.json();
+                    console.log('📥 Respuesta de Sheets:', result);
+                    
+                    if (result.success || result.config) {
+                        setSyncStatus('success');
+                        setLastSync(new Date());
+                        setTimeout(() => setSyncStatus('idle'), 2000);
+                        return true;
+                    } else {
+                        console.error('❌ Error en respuesta:', result);
+                        setSyncStatus('error');
+                        setTimeout(() => setSyncStatus('idle'), 3000);
+                        return false;
+                    }
                 } catch (error) {
-                    console.error('Error sync:', error);
+                    console.error('❌ Error sync:', error);
                     setSyncStatus('error');
                     setTimeout(() => setSyncStatus('idle'), 3000);
                     return false;
@@ -431,19 +442,27 @@
             // CARGAR ALIMENTOS CUSTOM - V4
             const loadCustomFoods = useCallback(async () => {
                 try {
-                    const response = await fetch(SHEETS_API_URL + '?action=get_custom_foods');
+                    console.log('📥 Cargando alimentos custom...');
+                    const response = await fetch(SHEETS_API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain' },
+                        body: JSON.stringify({ action: 'get_custom_foods' })
+                    });
                     const data = await response.json();
+                    console.log('📦 Custom foods recibidos:', Object.keys(data || {}).length);
+                    
                     if (data && typeof data === 'object') {
                         setCustomFoods(data);
                         saveData({ customFoods: data });
                     }
                 } catch (error) {
-                    console.error('Error loading custom foods:', error);
+                    console.error('❌ Error loading custom foods:', error);
                 }
             }, []);
 
             // GUARDAR ALIMENTO CUSTOM - V4
             const saveCustomFood = useCallback(async (food, macros) => {
+                console.log('💾 Guardando alimento custom:', food);
                 const newCustomFoods = { ...customFoods, [food.toLowerCase()]: macros };
                 setCustomFoods(newCustomFoods);
                 saveData({ customFoods: newCustomFoods });
@@ -456,6 +475,8 @@
                     carbs: macros.carbs,
                     fat: macros.fat
                 });
+                
+                console.log('✅ Alimento guardado:', food);
             }, [customFoods, saveData, syncToSheets]);
 
             // CALCULAR MACROS CON CUSTOM FOODS - V4
@@ -487,6 +508,34 @@
                 }
                 return null;
             }, [customFoods]);
+
+            // CARGAR NOTAS DE COACHING - V4
+            const loadCoachingNotes = useCallback(async () => {
+                try {
+                    console.log('📥 Cargando notas del coach...');
+                    const response = await fetch(SHEET_URL.replace('/edit', '/gviz/tq?tqx=out:json&sheet=Coaching_Notes'));
+                    const text = await response.text();
+                    
+                    // Parsear respuesta de Google Sheets
+                    const jsonString = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
+                    const data = JSON.parse(jsonString);
+                    
+                    if (data.table && data.table.rows) {
+                        const notes = data.table.rows.map(row => ({
+                            date: row.c[1]?.v || '',
+                            week: row.c[2]?.v || 0,
+                            type: row.c[3]?.v || 'consejo',
+                            note: row.c[4]?.v || '',
+                            context: row.c[5]?.v || ''
+                        })).filter(note => note.note);
+                        
+                        console.log('📝 Notas cargadas:', notes.length);
+                        setCoachingNotes(notes);
+                    }
+                } catch (error) {
+                    console.log('ℹ️ No se pudieron cargar notas (puede ser normal si no hay notas aún)');
+                }
+            }, []);
 
             // OBTENER ACTIVIDADES DE UN DÍA - V4
             const getDayActivities = useCallback((date) => {
@@ -853,13 +902,19 @@
                                                     grams: parseFloat(formData.grams),
                                                     ...macros
                                                 };
+                                                
+                                                console.log('🍽️ Guardando comida:', newMeal);
+                                                
                                                 const newMeals = [...meals, newMeal];
                                                 setMeals(newMeals);
                                                 saveData({ meals: newMeals });
-                                                syncToSheets({
+                                                
+                                                const syncResult = await syncToSheets({
                                                     action: 'log_meal',
                                                     ...newMeal
                                                 });
+                                                
+                                                console.log(syncResult ? '✅ Comida guardada en Sheet' : '❌ Error guardando en Sheet');
                                                 setShowMealModal(false);
                                             }
                                         }}
@@ -1632,7 +1687,44 @@
                                 </a>
                             </div>
 
-                            {/* Pesos Iniciales */}
+                            {/* Notas del Coach - V4 */}
+                            <div className="bg-gradient-to-br from-pink-900/20 to-pink-950/20 p-5 rounded-2xl border border-pink-800/50 mb-6">
+                                <h3 className="text-sm font-black uppercase text-pink-400 mb-4">📝 Notas del Coach</h3>
+                                {coachingNotes.length === 0 ? (
+                                    <p className="text-xs text-slate-500 mb-3">
+                                        Todavía no hay notas. El coach va a escribir análisis y recomendaciones acá.
+                                    </p>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {coachingNotes.slice(-3).reverse().map((note, i) => (
+                                            <div key={i} className="bg-slate-950/50 p-3 rounded-xl">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <span className="text-xs text-slate-500">{new Date(note.date).toLocaleDateString('es-AR')}</span>
+                                                    <span className={`text-xs font-bold px-2 py-1 rounded ${
+                                                        note.type === 'felicitación' ? 'bg-emerald-900/30 text-emerald-400' :
+                                                        note.type === 'alerta' ? 'bg-red-900/30 text-red-400' :
+                                                        note.type === 'ajuste' ? 'bg-orange-900/30 text-orange-400' :
+                                                        'bg-blue-900/30 text-blue-400'
+                                                    }`}>
+                                                        {note.type}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-slate-300">{note.note}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                <a 
+                                    href={SHEET_URL}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full bg-pink-900/30 border border-pink-800 text-pink-400 p-2 rounded-lg font-bold text-xs active:scale-95 transition-all flex items-center justify-center gap-2 mt-3"
+                                >
+                                    Ver todas las notas en Sheet
+                                </a>
+                            </div>
+
+                                                        {/* Pesos Iniciales */}
                             <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800">
                                 <h3 className="text-sm font-black uppercase text-blue-400 mb-4">Pesos Base (kg)</h3>
                                 <div className="space-y-3">
