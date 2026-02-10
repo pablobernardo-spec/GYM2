@@ -1131,7 +1131,7 @@
                                         .map((act, i) => (
                                             <div key={i} className="bg-slate-950/50 p-2 rounded-lg flex justify-between items-center text-xs">
                                                 <span className="text-slate-400">
-                                                    {act.km ? \`🏃 ${act.km}km\` : \`⚽ ${act.type} (${act.duration}min)\`}
+                                                    {act.km ? ('🏃 ' + act.km + 'km') : ('⚽ ' + act.type + ' (' + act.duration + 'min)')}
                                                 </span>
                                                 <span className="text-emerald-400 font-bold">
                                                     {act.kcal || 0} kcal
