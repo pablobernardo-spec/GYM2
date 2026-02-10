@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -13,34 +14,72 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: #020617; 
-            color: #f8fafc; 
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617;
+            color: #f8fafc;
             margin: 0;
             padding: 0;
             min-height: 100vh;
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior: none;
         }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .fade-in { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        @keyframes pulse-green { 
-            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-            50% { box-shadow: 0 0 20px 10px rgba(16, 185, 129, 0); }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
         }
-        
-        .pulse-success { animation: pulse-green 1s ease-in-out; }
-        
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .animate-spin { animation: spin 1s linear infinite; }
-        
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse-green {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 0 20px 10px rgba(16, 185, 129, 0);
+            }
+        }
+
+        .pulse-success {
+            animation: pulse-green 1s ease-in-out;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+
         #loader {
             display: flex;
             flex-direction: column;
@@ -52,18 +91,29 @@
             padding: 20px;
         }
 
-        .btn-active:active { transform: scale(0.95); }
-        
-        .install-prompt, .modal-overlay {
+        .btn-active:active {
+            transform: scale(0.95);
+        }
+
+        .install-prompt,
+        .modal-overlay {
             animation: slideUp 0.4s ease-out;
         }
-        
+
         @keyframes slideUp {
-            from { transform: translateY(100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
     </style>
 </head>
+
 <body>
     <div id="root">
         <div id="loader">
@@ -109,29 +159,29 @@
             const [loginForm, setLoginForm] = useState({ username: '', password: '' });
             const [loginError, setLoginError] = useState('');
             const [loading, setLoading] = useState(true);
-            
+
             const [currentWeek, setCurrentWeek] = useState(1);
             const [completedSets, setCompletedSets] = useState({});
             const [initialWeights, setInitialWeights] = useState({ sentadilla: 100, muerto: 100, pecho: 80 });
             const [workoutHistory, setWorkoutHistory] = useState([]);
-            
+
             const [timer, setTimer] = useState(0);
             const [isTimerActive, setIsTimerActive] = useState(false);
             const [targetTime, setTargetTime] = useState(180);
-            
+
             const [showInstallPrompt, setShowInstallPrompt] = useState(false);
             const [deferredPrompt, setDeferredPrompt] = useState(null);
             const [currentView, setCurrentView] = useState('workout');
-            
+
             const [syncStatus, setSyncStatus] = useState('idle');
             const [lastSync, setLastSync] = useState(null);
-            
+
             // ESTADOS ACTIVIDAD
             const [runningActivities, setRunningActivities] = useState([]);
             const [footballActivities, setFootballActivities] = useState([]);
             const [showRunningModal, setShowRunningModal] = useState(false);
             const [showFootballModal, setShowFootballModal] = useState(false);
-            
+
             // ESTADOS NUTRICIÓN - NUEVOS
             const [meals, setMeals] = useState([]);
             const [showMealModal, setShowMealModal] = useState(false);
@@ -140,26 +190,26 @@
                 fatPercentGoal: 0,
                 musclePercentGoal: 0
             });
-            
+
             // ESTADOS MEDICIONES - NUEVOS
             const [measurements, setMeasurements] = useState([]);
             const [showMeasurementModal, setShowMeasurementModal] = useState(false);
-            
+
             // ESTADOS HIDRATACIÓN - NUEVOS
             const [waterIntake, setWaterIntake] = useState({});
             const [waterGoal, setWaterGoal] = useState(3000);
-            
+
             // ESTADOS BIENESTAR - NUEVOS
             const [wellness, setWellness] = useState({});
             const [showWellnessModal, setShowWellnessModal] = useState(false);
-            
+
             // ESTADOS V4 - CALENDARIO Y COACHING
             const [customFoods, setCustomFoods] = useState({});
             const [coachingNotes, setCoachingNotes] = useState([]);
             const [calendarView, setCalendarView] = useState(new Date());
             const [selectedDay, setSelectedDay] = useState(null);
             const [showDayModal, setShowDayModal] = useState(false);
-                        
+
             const timerIntervalRef = useRef(null);
 
             // Función sincronizar
@@ -167,16 +217,16 @@
                 try {
                     setSyncStatus('syncing');
                     console.log('📤 Enviando a Sheets:', data.action);
-                    
+
                     const response = await fetch(SHEETS_API_URL, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'text/plain' },
                         body: JSON.stringify(data)
                     });
-                    
+
                     const result = await response.json();
                     console.log('📥 Respuesta de Sheets:', result);
-                    
+
                     if (result.success || result.config) {
                         setSyncStatus('success');
                         setLastSync(new Date());
@@ -254,10 +304,10 @@
                 } catch (err) {
                     console.error('Error cargando datos:', err);
                 }
-                
+
                 // Cargar custom foods V4
                 loadCustomFoods();
-                
+
                 setLoading(false);
             }, []);
 
@@ -322,7 +372,7 @@
                 const newCompletedSets = { ...completedSets, [key]: !completedSets[key] };
                 setCompletedSets(newCompletedSets);
                 saveData({ completedSets: newCompletedSets });
-                
+
                 await syncToSheets({
                     action: 'log_set',
                     week: currentWeek,
@@ -335,11 +385,11 @@
                     isWarmup: isWarmup,
                     completed: !completedSets[key]
                 });
-                
+
                 if (!isWarmup && !completedSets[key]) {
                     startTimer();
                 }
-                
+
                 if (!completedSets[key]) {
                     const newHistory = [...workoutHistory, {
                         date: new Date().toISOString(),
@@ -357,17 +407,17 @@
             const stats = useMemo(() => {
                 const weekInCycle = ((currentWeek - 1) % 4) + 1;
                 const cycleNumber = Math.floor((currentWeek - 1) / 4);
-                
+
                 const setsReps = [
                     { sets: 5, reps: 5 },
                     { sets: 6, reps: 6 },
                     { sets: 7, reps: 7 },
                     { sets: 8, reps: 8 }
                 ];
-                
+
                 const current = setsReps[weekInCycle - 1];
                 const increment = cycleNumber * 2.5;
-                
+
                 return {
                     sets: current.sets,
                     reps: current.reps,
@@ -379,7 +429,7 @@
             const calculateFoodMacros = useCallback((foodName, grams) => {
                 const normalized = foodName.toLowerCase().trim();
                 const food = FOOD_DATABASE[normalized];
-                
+
                 if (food) {
                     const multiplier = grams / 100;
                     return {
@@ -396,7 +446,7 @@
             const getDailyNutrition = useCallback(() => {
                 const today = new Date().toDateString();
                 const todayMeals = meals.filter(m => new Date(m.date).toDateString() === today);
-                
+
                 return todayMeals.reduce((acc, meal) => ({
                     kcal: acc.kcal + meal.kcal,
                     protein: acc.protein + meal.protein,
@@ -445,12 +495,12 @@
                     console.log('📥 Cargando alimentos custom...');
                     const response = await fetch(SHEETS_API_URL, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'text/plain' },
                         body: JSON.stringify({ action: 'get_custom_foods' })
                     });
                     const data = await response.json();
                     console.log('📦 Custom foods recibidos:', Object.keys(data || {}).length);
-                    
+
                     if (data && typeof data === 'object') {
                         setCustomFoods(data);
                         saveData({ customFoods: data });
@@ -466,7 +516,7 @@
                 const newCustomFoods = { ...customFoods, [food.toLowerCase()]: macros };
                 setCustomFoods(newCustomFoods);
                 saveData({ customFoods: newCustomFoods });
-                
+
                 await syncToSheets({
                     action: 'save_custom_food',
                     food: food,
@@ -475,14 +525,14 @@
                     carbs: macros.carbs,
                     fat: macros.fat
                 });
-                
+
                 console.log('✅ Alimento guardado:', food);
             }, [customFoods, saveData, syncToSheets]);
 
             // CALCULAR MACROS CON CUSTOM FOODS - V4
             const calculateFoodMacrosV4 = useCallback((foodName, grams) => {
                 const normalized = foodName.toLowerCase().trim();
-                
+
                 // Primero buscar en custom foods
                 if (customFoods[normalized]) {
                     const food = customFoods[normalized];
@@ -494,7 +544,7 @@
                         fat: Math.round(food.fat * multiplier * 10) / 10
                     };
                 }
-                
+
                 // Sino buscar en base de datos estática
                 const food = FOOD_DATABASE[normalized];
                 if (food) {
@@ -515,11 +565,11 @@
                     console.log('📥 Cargando notas del coach...');
                     const response = await fetch(SHEET_URL.replace('/edit', '/gviz/tq?tqx=out:json&sheet=Coaching_Notes'));
                     const text = await response.text();
-                    
+
                     // Parsear respuesta de Google Sheets
                     const jsonString = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
                     const data = JSON.parse(jsonString);
-                    
+
                     if (data.table && data.table.rows) {
                         const notes = data.table.rows.map(row => ({
                             date: row.c[1]?.v || '',
@@ -528,7 +578,7 @@
                             note: row.c[4]?.v || '',
                             context: row.c[5]?.v || ''
                         })).filter(note => note.note);
-                        
+
                         console.log('📝 Notas cargadas:', notes.length);
                         setCoachingNotes(notes);
                     }
@@ -540,7 +590,7 @@
             // OBTENER ACTIVIDADES DE UN DÍA - V4
             const getDayActivities = useCallback((date) => {
                 const dateStr = date.toDateString();
-                
+
                 return {
                     workouts: workoutHistory.filter(w => new Date(w.date).toDateString() === dateStr),
                     running: runningActivities.filter(r => new Date(r.date).toDateString() === dateStr),
@@ -582,19 +632,19 @@
                                     setLoginError('Credenciales incorrectas');
                                 }
                             }} className="space-y-4">
-                                <input 
-                                    type="text" 
-                                    placeholder="Usuario" 
+                                <input
+                                    type="text"
+                                    placeholder="Usuario"
                                     value={loginForm.username}
-                                    className="w-full bg-slate-950 border border-slate-800 p-4 rounded-xl outline-none focus:border-blue-500 text-white transition-colors" 
-                                    onChange={e => setLoginForm({...loginForm, username: e.target.value})} 
+                                    className="w-full bg-slate-950 border border-slate-800 p-4 rounded-xl outline-none focus:border-blue-500 text-white transition-colors"
+                                    onChange={e => setLoginForm({ ...loginForm, username: e.target.value })}
                                 />
-                                <input 
-                                    type="password" 
+                                <input
+                                    type="password"
                                     placeholder="Contraseña"
                                     value={loginForm.password}
-                                    className="w-full bg-slate-950 border border-slate-800 p-4 rounded-xl outline-none focus:border-blue-500 text-white transition-colors" 
-                                    onChange={e => setLoginForm({...loginForm, password: e.target.value})} 
+                                    className="w-full bg-slate-950 border border-slate-800 p-4 rounded-xl outline-none focus:border-blue-500 text-white transition-colors"
+                                    onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
                                 />
                                 {loginError && <p className="text-red-500 text-xs font-bold text-center animate-pulse">{loginError}</p>}
                                 <button className="w-full bg-gradient-to-r from-blue-600 to-blue-500 p-4 rounded-xl font-black uppercase italic tracking-widest active:scale-95 transition-all shadow-lg shadow-blue-600/20">
@@ -607,27 +657,33 @@
             }
 
             const routine = [
-                { id: 'Lunes', title: 'Lunes: Pierna Fuerte', ex: [
-                    { name: 'Sentadilla', w: initialWeights.sentadilla + stats.increment, s: stats.sets, r: stats.reps, wu: true, type: 'fuerte' },
-                    { name: 'Pecho Plano', w: initialWeights.pecho + stats.increment, s: stats.sets, r: stats.reps, wu: true, type: 'fuerte' },
-                    { name: 'Peso Muerto (T)', w: initialWeights.muerto + stats.increment, s: 3, r: 5, wu: false, type: 'tranquilo' }
-                ]},
-                { id: 'Miercoles', title: 'Miércoles: Pecho Fuerte', ex: [
-                    { name: 'Pecho Plano', w: initialWeights.pecho + stats.increment, s: stats.sets, r: stats.reps, wu: true, type: 'fuerte' },
-                    { name: 'Sentadilla (T)', w: initialWeights.sentadilla + stats.increment, s: 3, r: 5, wu: false, type: 'tranquilo' },
-                    { name: 'Remo Barra', w: 'Moderado', s: 4, r: 10, wu: false, type: 'accesorio' }
-                ]},
-                { id: 'Viernes', title: 'Viernes: Muerto Fuerte', ex: [
-                    { name: 'Peso Muerto', w: initialWeights.muerto + stats.increment, s: stats.sets, r: stats.reps, wu: true, type: 'fuerte' },
-                    { name: 'Sentadilla (T)', w: initialWeights.sentadilla + stats.increment, s: 3, r: 5, wu: false, type: 'tranquilo' },
-                    { name: 'Pecho (T)', w: Math.round((initialWeights.pecho + stats.increment) * 0.8), s: 3, r: 5, wu: false, type: 'tranquilo' }
-                ]}
+                {
+                    id: 'Lunes', title: 'Lunes: Pierna Fuerte', ex: [
+                        { name: 'Sentadilla', w: initialWeights.sentadilla + stats.increment, s: stats.sets, r: stats.reps, wu: true, type: 'fuerte' },
+                        { name: 'Pecho Plano', w: initialWeights.pecho + stats.increment, s: stats.sets, r: stats.reps, wu: true, type: 'fuerte' },
+                        { name: 'Peso Muerto (T)', w: initialWeights.muerto + stats.increment, s: 3, r: 5, wu: false, type: 'tranquilo' }
+                    ]
+                },
+                {
+                    id: 'Miercoles', title: 'Miércoles: Pecho Fuerte', ex: [
+                        { name: 'Pecho Plano', w: initialWeights.pecho + stats.increment, s: stats.sets, r: stats.reps, wu: true, type: 'fuerte' },
+                        { name: 'Sentadilla (T)', w: initialWeights.sentadilla + stats.increment, s: 3, r: 5, wu: false, type: 'tranquilo' },
+                        { name: 'Remo Barra', w: 'Moderado', s: 4, r: 10, wu: false, type: 'accesorio' }
+                    ]
+                },
+                {
+                    id: 'Viernes', title: 'Viernes: Muerto Fuerte', ex: [
+                        { name: 'Peso Muerto', w: initialWeights.muerto + stats.increment, s: stats.sets, r: stats.reps, wu: true, type: 'fuerte' },
+                        { name: 'Sentadilla (T)', w: initialWeights.sentadilla + stats.increment, s: 3, r: 5, wu: false, type: 'tranquilo' },
+                        { name: 'Pecho (T)', w: Math.round((initialWeights.pecho + stats.increment) * 0.8), s: 3, r: 5, wu: false, type: 'tranquilo' }
+                    ]
+                }
             ];
 
             // MODALES - RUNNING (de v2, mantenido)
             const RunningModal = () => {
                 const [formData, setFormData] = useState({ km: '', kcal: '' });
-                
+
                 return (
                     <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" onClick={() => setShowRunningModal(false)}>
                         <div className="bg-slate-900 rounded-3xl p-6 max-w-sm w-full border border-slate-800 modal-overlay" onClick={e => e.stopPropagation()}>
@@ -639,7 +695,7 @@
                                         type="number"
                                         step="0.1"
                                         value={formData.km}
-                                        onChange={e => setFormData({...formData, km: e.target.value})}
+                                        onChange={e => setFormData({ ...formData, km: e.target.value })}
                                         className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-emerald-500"
                                         placeholder="5.5"
                                     />
@@ -649,7 +705,7 @@
                                     <input
                                         type="number"
                                         value={formData.kcal}
-                                        onChange={e => setFormData({...formData, kcal: e.target.value})}
+                                        onChange={e => setFormData({ ...formData, kcal: e.target.value })}
                                         className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-emerald-500"
                                         placeholder="350"
                                     />
@@ -693,7 +749,7 @@
             // MODAL FÚTBOL (de v2, mantenido)
             const FootballModal = () => {
                 const [formData, setFormData] = useState({ type: '7', duration: '60', intensity: 'media' });
-                
+
                 return (
                     <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" onClick={() => setShowFootballModal(false)}>
                         <div className="bg-slate-900 rounded-3xl p-6 max-w-sm w-full border border-slate-800 modal-overlay" onClick={e => e.stopPropagation()}>
@@ -705,12 +761,11 @@
                                         {['7', '9', '11'].map(type => (
                                             <button
                                                 key={type}
-                                                onClick={() => setFormData({...formData, type})}
-                                                className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all ${
-                                                    formData.type === type 
-                                                        ? 'bg-orange-600 text-white' 
+                                                onClick={() => setFormData({ ...formData, type })}
+                                                className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all ${formData.type === type
+                                                        ? 'bg-orange-600 text-white'
                                                         : 'bg-slate-950 text-slate-500 border border-slate-800'
-                                                }`}
+                                                    }`}
                                             >
                                                 {type}
                                             </button>
@@ -722,7 +777,7 @@
                                     <input
                                         type="number"
                                         value={formData.duration}
-                                        onChange={e => setFormData({...formData, duration: e.target.value})}
+                                        onChange={e => setFormData({ ...formData, duration: e.target.value })}
                                         className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-orange-500"
                                     />
                                 </div>
@@ -732,12 +787,11 @@
                                         {['baja', 'media', 'alta'].map(intensity => (
                                             <button
                                                 key={intensity}
-                                                onClick={() => setFormData({...formData, intensity})}
-                                                className={`flex-1 py-2 rounded-lg font-bold text-xs transition-all ${
-                                                    formData.intensity === intensity 
-                                                        ? 'bg-orange-600 text-white' 
+                                                onClick={() => setFormData({ ...formData, intensity })}
+                                                className={`flex-1 py-2 rounded-lg font-bold text-xs transition-all ${formData.intensity === intensity
+                                                        ? 'bg-orange-600 text-white'
                                                         : 'bg-slate-950 text-slate-500 border border-slate-800'
-                                                }`}
+                                                    }`}
                                             >
                                                 {intensity.charAt(0).toUpperCase() + intensity.slice(1)}
                                             </button>
@@ -781,16 +835,16 @@
 
             // MODAL COMIDA - NUEVO
             const MealModal = () => {
-                const [formData, setFormData] = useState({ 
-                    food: '', 
-                    grams: '', 
+                const [formData, setFormData] = useState({
+                    food: '',
+                    grams: '',
                     autoCalc: true,
                     kcal: '',
                     protein: '',
                     carbs: '',
                     fat: ''
                 });
-                
+
                 return (
                     <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" onClick={() => setShowMealModal(false)}>
                         <div className="bg-slate-900 rounded-3xl p-6 max-w-sm w-full border border-slate-800 modal-overlay" onClick={e => e.stopPropagation()}>
@@ -801,7 +855,7 @@
                                     <input
                                         type="text"
                                         value={formData.food}
-                                        onChange={e => setFormData({...formData, food: e.target.value})}
+                                        onChange={e => setFormData({ ...formData, food: e.target.value })}
                                         className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-purple-500"
                                         placeholder="ej: pollo, arroz, banana"
                                     />
@@ -811,17 +865,17 @@
                                     <input
                                         type="number"
                                         value={formData.grams}
-                                        onChange={e => setFormData({...formData, grams: e.target.value})}
+                                        onChange={e => setFormData({ ...formData, grams: e.target.value })}
                                         className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-purple-500"
                                         placeholder="150"
                                     />
                                 </div>
-                                
+
                                 <div className="flex items-center gap-2 p-3 bg-slate-950 rounded-lg">
-                                    <input 
-                                        type="checkbox" 
+                                    <input
+                                        type="checkbox"
                                         checked={formData.autoCalc}
-                                        onChange={e => setFormData({...formData, autoCalc: e.target.checked})}
+                                        onChange={e => setFormData({ ...formData, autoCalc: e.target.checked })}
                                         className="w-4 h-4"
                                     />
                                     <label className="text-xs text-slate-400 font-bold">Calcular automático</label>
@@ -834,7 +888,7 @@
                                             <input
                                                 type="number"
                                                 value={formData.kcal}
-                                                onChange={e => setFormData({...formData, kcal: e.target.value})}
+                                                onChange={e => setFormData({ ...formData, kcal: e.target.value })}
                                                 className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-purple-500"
                                             />
                                         </div>
@@ -843,7 +897,7 @@
                                             <input
                                                 type="number"
                                                 value={formData.protein}
-                                                onChange={e => setFormData({...formData, protein: e.target.value})}
+                                                onChange={e => setFormData({ ...formData, protein: e.target.value })}
                                                 className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-purple-500"
                                             />
                                         </div>
@@ -852,7 +906,7 @@
                                             <input
                                                 type="number"
                                                 value={formData.carbs}
-                                                onChange={e => setFormData({...formData, carbs: e.target.value})}
+                                                onChange={e => setFormData({ ...formData, carbs: e.target.value })}
                                                 className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-purple-500"
                                             />
                                         </div>
@@ -861,13 +915,13 @@
                                             <input
                                                 type="number"
                                                 value={formData.fat}
-                                                onChange={e => setFormData({...formData, fat: e.target.value})}
+                                                onChange={e => setFormData({ ...formData, fat: e.target.value })}
                                                 className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-purple-500"
                                             />
                                         </div>
                                     </div>
                                 )}
-                                
+
                                 <div className="flex gap-2">
                                     <button
                                         onClick={() => setShowMealModal(false)}
@@ -895,25 +949,25 @@
                                                     // Guardar en custom foods para futuro uso
                                                     saveCustomFood(formData.food, macros);
                                                 }
-                                                
+
                                                 const newMeal = {
                                                     date: new Date().toISOString(),
                                                     food: formData.food,
                                                     grams: parseFloat(formData.grams),
                                                     ...macros
                                                 };
-                                                
+
                                                 console.log('🍽️ Guardando comida:', newMeal);
-                                                
+
                                                 const newMeals = [...meals, newMeal];
                                                 setMeals(newMeals);
                                                 saveData({ meals: newMeals });
-                                                
+
                                                 const syncResult = await syncToSheets({
                                                     action: 'log_meal',
                                                     ...newMeal
                                                 });
-                                                
+
                                                 console.log(syncResult ? '✅ Comida guardada en Sheet' : '❌ Error guardando en Sheet');
                                                 setShowMealModal(false);
                                             }
@@ -931,14 +985,14 @@
 
             // MODAL MEDICIONES - NUEVO
             const MeasurementModal = () => {
-                const [formData, setFormData] = useState({ 
-                    weight: '', 
-                    waist: '', 
+                const [formData, setFormData] = useState({
+                    weight: '',
+                    waist: '',
                     chest: '',
                     arms: '',
                     legs: ''
                 });
-                
+
                 return (
                     <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" onClick={() => setShowMeasurementModal(false)}>
                         <div className="bg-slate-900 rounded-3xl p-6 max-w-sm w-full border border-slate-800 modal-overlay" onClick={e => e.stopPropagation()}>
@@ -950,7 +1004,7 @@
                                         type="number"
                                         step="0.1"
                                         value={formData.weight}
-                                        onChange={e => setFormData({...formData, weight: e.target.value})}
+                                        onChange={e => setFormData({ ...formData, weight: e.target.value })}
                                         className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-blue-500"
                                     />
                                 </div>
@@ -960,7 +1014,7 @@
                                         <input
                                             type="number"
                                             value={formData.waist}
-                                            onChange={e => setFormData({...formData, waist: e.target.value})}
+                                            onChange={e => setFormData({ ...formData, waist: e.target.value })}
                                             className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500"
                                         />
                                     </div>
@@ -969,7 +1023,7 @@
                                         <input
                                             type="number"
                                             value={formData.chest}
-                                            onChange={e => setFormData({...formData, chest: e.target.value})}
+                                            onChange={e => setFormData({ ...formData, chest: e.target.value })}
                                             className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500"
                                         />
                                     </div>
@@ -978,7 +1032,7 @@
                                         <input
                                             type="number"
                                             value={formData.arms}
-                                            onChange={e => setFormData({...formData, arms: e.target.value})}
+                                            onChange={e => setFormData({ ...formData, arms: e.target.value })}
                                             className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500"
                                         />
                                     </div>
@@ -987,7 +1041,7 @@
                                         <input
                                             type="number"
                                             value={formData.legs}
-                                            onChange={e => setFormData({...formData, legs: e.target.value})}
+                                            onChange={e => setFormData({ ...formData, legs: e.target.value })}
                                             className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500"
                                         />
                                     </div>
@@ -1033,12 +1087,12 @@
 
             // MODAL BIENESTAR - NUEVO
             const WellnessModal = () => {
-                const [formData, setFormData] = useState({ 
-                    sleep: '', 
+                const [formData, setFormData] = useState({
+                    sleep: '',
                     quality: 3,
                     notes: ''
                 });
-                
+
                 return (
                     <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" onClick={() => setShowWellnessModal(false)}>
                         <div className="bg-slate-900 rounded-3xl p-6 max-w-sm w-full border border-slate-800 modal-overlay" onClick={e => e.stopPropagation()}>
@@ -1050,7 +1104,7 @@
                                         type="number"
                                         step="0.5"
                                         value={formData.sleep}
-                                        onChange={e => setFormData({...formData, sleep: e.target.value})}
+                                        onChange={e => setFormData({ ...formData, sleep: e.target.value })}
                                         className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-cyan-500"
                                         placeholder="7.5"
                                     />
@@ -1058,10 +1112,10 @@
                                 <div>
                                     <label className="text-xs text-slate-500 font-bold block mb-2">Calidad del sueño</label>
                                     <div className="flex justify-center gap-2">
-                                        {[1,2,3,4,5].map(star => (
+                                        {[1, 2, 3, 4, 5].map(star => (
                                             <button
                                                 key={star}
-                                                onClick={() => setFormData({...formData, quality: star})}
+                                                onClick={() => setFormData({ ...formData, quality: star })}
                                                 className="text-3xl active:scale-95 transition-all"
                                             >
                                                 {star <= formData.quality ? '⭐' : '☆'}
@@ -1073,7 +1127,7 @@
                                     <label className="text-xs text-slate-500 font-bold block mb-1">Notas / Sensaciones</label>
                                     <textarea
                                         value={formData.notes}
-                                        onChange={e => setFormData({...formData, notes: e.target.value})}
+                                        onChange={e => setFormData({ ...formData, notes: e.target.value })}
                                         className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-cyan-500 h-20 resize-none"
                                         placeholder="¿Cómo te sentís hoy?"
                                     />
@@ -1123,11 +1177,11 @@
                 const latestMeasurement = getLatestMeasurement();
                 const today = new Date().toDateString();
                 const todayWellness = wellness[today];
-                
+
                 return (
                     <div className="max-w-md mx-auto min-h-screen pb-24 fade-in p-4 no-scrollbar overflow-y-auto">
                         <h2 className="text-2xl font-black uppercase italic mb-6 border-l-4 border-purple-500 pl-3">Nutrición</h2>
-                        
+
                         {/* MACROS DEL DÍA */}
                         <div className="bg-gradient-to-br from-purple-900/20 to-purple-950/20 p-5 rounded-3xl border border-purple-800/50 mb-4">
                             <h3 className="text-sm font-black uppercase text-purple-400 mb-3">🍽️ Hoy</h3>
@@ -1160,7 +1214,7 @@
                         {/* ACTIVIDAD FÍSICA */}
                         <div className="bg-gradient-to-br from-emerald-900/20 to-orange-900/20 p-5 rounded-3xl border border-emerald-800/50 mb-4">
                             <h3 className="text-sm font-black uppercase text-emerald-400 mb-3">🏃 Actividad Física</h3>
-                            
+
                             <div className="grid grid-cols-2 gap-2 mb-3">
                                 <button
                                     onClick={() => setShowRunningModal(true)}
@@ -1175,7 +1229,7 @@
                                     ⚽ Fútbol
                                 </button>
                             </div>
-                            
+
                             {/* Últimas actividades */}
                             {(runningActivities.length > 0 || footballActivities.length > 0) && (
                                 <div className="space-y-2">
@@ -1207,13 +1261,13 @@
                                     <p className="text-xs text-slate-500">de {waterGoal}ml</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-lg font-bold text-cyan-400">{Math.round(todayWater/waterGoal*100)}%</p>
+                                    <p className="text-lg font-bold text-cyan-400">{Math.round(todayWater / waterGoal * 100)}%</p>
                                 </div>
                             </div>
                             <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden mb-3">
-                                <div 
+                                <div
                                     className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-500"
-                                    style={{width: `${Math.min(todayWater/waterGoal*100, 100)}%`}}
+                                    style={{ width: `${Math.min(todayWater / waterGoal * 100, 100)}%` }}
                                 ></div>
                             </div>
                             <div className="flex gap-2">
@@ -1260,14 +1314,14 @@
                         {/* OBJETIVOS CORPORALES */}
                         <div className="bg-gradient-to-br from-blue-900/20 to-blue-950/20 p-5 rounded-3xl border border-blue-800/50 mb-4">
                             <h3 className="text-sm font-black uppercase text-blue-400 mb-3">🎯 Objetivos</h3>
-                            
+
                             {latestMeasurement && (
                                 <div className="mb-4 p-3 bg-slate-950/50 rounded-xl">
                                     <p className="text-xs text-slate-500 mb-2">Última medición: {new Date(latestMeasurement.date).toLocaleDateString('es-AR')}</p>
                                     <p className="text-2xl font-black text-white">{latestMeasurement.weight} kg</p>
                                 </div>
                             )}
-                            
+
                             <div className="space-y-3">
                                 <div className="grid grid-cols-2 gap-2">
                                     <div>
@@ -1277,9 +1331,9 @@
                                             step="0.1"
                                             value={bodyGoals.weightGoal || ''}
                                             onChange={e => {
-                                                const newGoals = {...bodyGoals, weightGoal: parseFloat(e.target.value) || 0};
+                                                const newGoals = { ...bodyGoals, weightGoal: parseFloat(e.target.value) || 0 };
                                                 setBodyGoals(newGoals);
-                                                saveData({bodyGoals: newGoals});
+                                                saveData({ bodyGoals: newGoals });
                                             }}
                                             className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500"
                                         />
@@ -1291,9 +1345,9 @@
                                             step="0.1"
                                             value={bodyGoals.fatPercentGoal || ''}
                                             onChange={e => {
-                                                const newGoals = {...bodyGoals, fatPercentGoal: parseFloat(e.target.value) || 0};
+                                                const newGoals = { ...bodyGoals, fatPercentGoal: parseFloat(e.target.value) || 0 };
                                                 setBodyGoals(newGoals);
-                                                saveData({bodyGoals: newGoals});
+                                                saveData({ bodyGoals: newGoals });
                                             }}
                                             className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500"
                                         />
@@ -1306,14 +1360,14 @@
                                         step="0.1"
                                         value={bodyGoals.musclePercentGoal || ''}
                                         onChange={e => {
-                                            const newGoals = {...bodyGoals, musclePercentGoal: parseFloat(e.target.value) || 0};
+                                            const newGoals = { ...bodyGoals, musclePercentGoal: parseFloat(e.target.value) || 0 };
                                             setBodyGoals(newGoals);
-                                            saveData({bodyGoals: newGoals});
+                                            saveData({ bodyGoals: newGoals });
                                         }}
                                         className="w-full bg-slate-950 border border-slate-800 p-2 rounded-lg text-white text-sm outline-none focus:border-blue-500"
                                     />
                                 </div>
-                                
+
                                 {bodyGoals.weightGoal > 0 && bodyGoals.fatPercentGoal > 0 && bodyGoals.musclePercentGoal > 0 && (
                                     <div className="grid grid-cols-2 gap-2 mt-3">
                                         <div className="bg-red-900/20 p-2 rounded-lg text-center border border-red-800/30">
@@ -1330,7 +1384,7 @@
                                         </div>
                                     </div>
                                 )}
-                                
+
                                 <button
                                     onClick={() => {
                                         if (bodyGoals.weightGoal > 0) {
@@ -1357,7 +1411,7 @@
                             >
                                 + Nueva Medición
                             </button>
-                            
+
                             {measurements.length > 0 && (
                                 <div className="space-y-2">
                                     {measurements.slice(-3).reverse().map((m, i) => (
@@ -1408,19 +1462,19 @@
                 );
             };
 
-            
+
             // VISTA CALENDARIO - V4
             const CalendarView = () => {
                 const year = calendarView.getFullYear();
                 const month = calendarView.getMonth();
                 const today = new Date();
-                
+
                 // Obtener días del mes
                 const firstDay = new Date(year, month, 1);
                 const lastDay = new Date(year, month + 1, 0);
                 const daysInMonth = lastDay.getDate();
                 const startingDayOfWeek = firstDay.getDay();
-                
+
                 // Crear array de días
                 const days = [];
                 for (let i = 0; i < startingDayOfWeek; i++) {
@@ -1429,29 +1483,29 @@
                 for (let i = 1; i <= daysInMonth; i++) {
                     days.push(new Date(year, month, i));
                 }
-                
+
                 const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-                                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-                
+                    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
                 const changeMonth = (delta) => {
                     const newDate = new Date(year, month + delta, 1);
                     setCalendarView(newDate);
                 };
-                
+
                 const getDayIndicators = (date) => {
                     if (!date) return [];
                     const activities = getDayActivities(date);
                     const indicators = [];
-                    
+
                     if (activities.workouts.length > 0) indicators.push({ icon: '🏋️', color: 'bg-blue-500' });
                     if (activities.running.length > 0) indicators.push({ icon: '🏃', color: 'bg-emerald-500' });
                     if (activities.football.length > 0) indicators.push({ icon: '⚽', color: 'bg-orange-500' });
                     if (activities.meals.length > 0) indicators.push({ icon: '🍽️', color: 'bg-purple-500' });
                     if (activities.water >= waterGoal) indicators.push({ icon: '💧', color: 'bg-cyan-500' });
-                    
+
                     return indicators;
                 };
-                
+
                 return (
                     <div className="max-w-md mx-auto min-h-screen pb-24 fade-in p-4">
                         <div className="flex items-center justify-between mb-6">
@@ -1471,7 +1525,7 @@
                                 <i className="fas fa-chevron-right text-slate-400"></i>
                             </button>
                         </div>
-                        
+
                         {/* Días de la semana */}
                         <div className="grid grid-cols-7 gap-1 mb-2">
                             {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((day, i) => (
@@ -1480,17 +1534,17 @@
                                 </div>
                             ))}
                         </div>
-                        
+
                         {/* Grid de días */}
                         <div className="grid grid-cols-7 gap-1">
                             {days.map((date, index) => {
                                 if (!date) {
                                     return <div key={index} className="aspect-square"></div>;
                                 }
-                                
+
                                 const isToday = date.toDateString() === today.toDateString();
                                 const indicators = getDayIndicators(date);
-                                
+
                                 return (
                                     <button
                                         key={index}
@@ -1498,13 +1552,12 @@
                                             setSelectedDay(date);
                                             setShowDayModal(true);
                                         }}
-                                        className={`aspect-square rounded-xl border-2 p-1 flex flex-col items-center justify-between active:scale-95 transition-all ${
-                                            isToday 
-                                                ? 'border-yellow-500 bg-yellow-500/20' 
+                                        className={`aspect-square rounded-xl border-2 p-1 flex flex-col items-center justify-between active:scale-95 transition-all ${isToday
+                                                ? 'border-yellow-500 bg-yellow-500/20'
                                                 : indicators.length > 0
                                                     ? 'border-slate-700 bg-slate-900'
                                                     : 'border-slate-800 bg-slate-950'
-                                        }`}
+                                            }`}
                                     >
                                         <span className={`text-xs font-bold ${isToday ? 'text-yellow-400' : 'text-slate-400'}`}>
                                             {date.getDate()}
@@ -1526,14 +1579,14 @@
             const DayModal = () => {
                 if (!selectedDay) return null;
                 const activities = getDayActivities(selectedDay);
-                
+
                 return (
                     <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" onClick={() => setShowDayModal(false)}>
                         <div className="bg-slate-900 rounded-3xl p-6 max-w-sm w-full max-h-[80vh] overflow-y-auto border border-slate-800" onClick={e => e.stopPropagation()}>
                             <h3 className="text-xl font-black uppercase italic mb-4 text-blue-400">
                                 📅 {selectedDay.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
                             </h3>
-                            
+
                             {/* Entrenamientos */}
                             {activities.workouts.length > 0 && (
                                 <div className="mb-4">
@@ -1545,7 +1598,7 @@
                                     </div>
                                 </div>
                             )}
-                            
+
                             {/* Running */}
                             {activities.running.length > 0 && (
                                 <div className="mb-4">
@@ -1555,7 +1608,7 @@
                                     ))}
                                 </div>
                             )}
-                            
+
                             {/* Fútbol */}
                             {activities.football.length > 0 && (
                                 <div className="mb-4">
@@ -1565,7 +1618,7 @@
                                     ))}
                                 </div>
                             )}
-                            
+
                             {/* Comidas */}
                             {activities.meals.length > 0 && (
                                 <div className="mb-4">
@@ -1575,7 +1628,7 @@
                                     </p>
                                 </div>
                             )}
-                            
+
                             {/* Agua */}
                             {activities.water > 0 && (
                                 <div className="mb-4">
@@ -1583,7 +1636,7 @@
                                     <p className="text-xs text-slate-400">{activities.water}ml de {waterGoal}ml</p>
                                 </div>
                             )}
-                            
+
                             {/* Bienestar */}
                             {activities.wellness && (
                                 <div className="mb-4">
@@ -1591,12 +1644,12 @@
                                     <p className="text-xs text-slate-400">Sueño: {activities.wellness.sleep}h - {'⭐'.repeat(activities.wellness.quality)}</p>
                                 </div>
                             )}
-                            
-                            {activities.workouts.length === 0 && activities.running.length === 0 && 
-                             activities.football.length === 0 && activities.meals.length === 0 && (
-                                <p className="text-sm text-slate-500 text-center py-8">No hay actividades registradas</p>
-                            )}
-                            
+
+                            {activities.workouts.length === 0 && activities.running.length === 0 &&
+                                activities.football.length === 0 && activities.meals.length === 0 && (
+                                    <p className="text-sm text-slate-500 text-center py-8">No hay actividades registradas</p>
+                                )}
+
                             <button
                                 onClick={() => setShowDayModal(false)}
                                 className="w-full bg-blue-600 text-white p-3 rounded-xl font-bold text-sm active:scale-95 transition-all mt-4"
@@ -1654,7 +1707,7 @@
                 return (
                     <div className="max-w-md mx-auto min-h-screen pb-24 fade-in p-4">
                         <h2 className="text-2xl font-black uppercase italic mb-6 border-l-4 border-blue-500 pl-3">Configuración</h2>
-                        
+
                         <div className="space-y-6">
                             {/* Google Sheets Sync */}
                             <div className="bg-gradient-to-br from-emerald-900/20 to-emerald-950/20 p-5 rounded-2xl border border-emerald-800/50">
@@ -1675,8 +1728,8 @@
                                         Última sync: {lastSync.toLocaleString('es-AR')}
                                     </p>
                                 )}
-                            
-                                <a 
+
+                                <a
                                     href={SHEET_URL}
                                     target="_blank"
                                     rel="noopener noreferrer"
@@ -1700,12 +1753,11 @@
                                             <div key={i} className="bg-slate-950/50 p-3 rounded-xl">
                                                 <div className="flex justify-between items-center mb-2">
                                                     <span className="text-xs text-slate-500">{new Date(note.date).toLocaleDateString('es-AR')}</span>
-                                                    <span className={`text-xs font-bold px-2 py-1 rounded ${
-                                                        note.type === 'felicitación' ? 'bg-emerald-900/30 text-emerald-400' :
-                                                        note.type === 'alerta' ? 'bg-red-900/30 text-red-400' :
-                                                        note.type === 'ajuste' ? 'bg-orange-900/30 text-orange-400' :
-                                                        'bg-blue-900/30 text-blue-400'
-                                                    }`}>
+                                                    <span className={`text-xs font-bold px-2 py-1 rounded ${note.type === 'felicitación' ? 'bg-emerald-900/30 text-emerald-400' :
+                                                            note.type === 'alerta' ? 'bg-red-900/30 text-red-400' :
+                                                                note.type === 'ajuste' ? 'bg-orange-900/30 text-orange-400' :
+                                                                    'bg-blue-900/30 text-blue-400'
+                                                        }`}>
                                                         {note.type}
                                                     </span>
                                                 </div>
@@ -1714,7 +1766,7 @@
                                         ))}
                                     </div>
                                 )}
-                                <a 
+                                <a
                                     href={SHEET_URL}
                                     target="_blank"
                                     rel="noopener noreferrer"
@@ -1724,45 +1776,45 @@
                                 </a>
                             </div>
 
-                                                        {/* Pesos Iniciales */}
+                            {/* Pesos Iniciales */}
                             <div className="bg-slate-900 p-5 rounded-2xl border border-slate-800">
                                 <h3 className="text-sm font-black uppercase text-blue-400 mb-4">Pesos Base (kg)</h3>
                                 <div className="space-y-3">
                                     <div>
                                         <label className="text-xs text-slate-500 font-bold block mb-1">Sentadilla</label>
-                                        <input 
-                                            type="number" 
+                                        <input
+                                            type="number"
                                             value={initialWeights.sentadilla}
                                             onChange={(e) => {
-                                                const newWeights = {...initialWeights, sentadilla: parseInt(e.target.value) || 0};
+                                                const newWeights = { ...initialWeights, sentadilla: parseInt(e.target.value) || 0 };
                                                 setInitialWeights(newWeights);
-                                                saveData({initialWeights: newWeights});
+                                                saveData({ initialWeights: newWeights });
                                             }}
                                             className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-blue-500"
                                         />
                                     </div>
                                     <div>
                                         <label className="text-xs text-slate-500 font-bold block mb-1">Peso Muerto</label>
-                                        <input 
-                                            type="number" 
+                                        <input
+                                            type="number"
                                             value={initialWeights.muerto}
                                             onChange={(e) => {
-                                                const newWeights = {...initialWeights, muerto: parseInt(e.target.value) || 0};
+                                                const newWeights = { ...initialWeights, muerto: parseInt(e.target.value) || 0 };
                                                 setInitialWeights(newWeights);
-                                                saveData({initialWeights: newWeights});
+                                                saveData({ initialWeights: newWeights });
                                             }}
                                             className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-blue-500"
                                         />
                                     </div>
                                     <div>
                                         <label className="text-xs text-slate-500 font-bold block mb-1">Pecho Plano</label>
-                                        <input 
-                                            type="number" 
+                                        <input
+                                            type="number"
                                             value={initialWeights.pecho}
                                             onChange={(e) => {
-                                                const newWeights = {...initialWeights, pecho: parseInt(e.target.value) || 0};
+                                                const newWeights = { ...initialWeights, pecho: parseInt(e.target.value) || 0 };
                                                 setInitialWeights(newWeights);
-                                                saveData({initialWeights: newWeights});
+                                                saveData({ initialWeights: newWeights });
                                             }}
                                             className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-blue-500"
                                         />
@@ -1782,13 +1834,12 @@
                                                     key={seconds}
                                                     onClick={() => {
                                                         setTargetTime(seconds);
-                                                        saveData({targetTime: seconds});
+                                                        saveData({ targetTime: seconds });
                                                     }}
-                                                    className={`flex-1 py-2 rounded-lg font-bold text-xs transition-all ${
-                                                        targetTime === seconds 
-                                                            ? 'bg-blue-600 text-white' 
+                                                    className={`flex-1 py-2 rounded-lg font-bold text-xs transition-all ${targetTime === seconds
+                                                            ? 'bg-blue-600 text-white'
                                                             : 'bg-slate-950 text-slate-500 border border-slate-800'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {Math.floor(seconds / 60)}:{(seconds % 60).toString().padStart(2, '0')}
                                                 </button>
@@ -1804,7 +1855,7 @@
                                             onChange={e => {
                                                 const goal = parseInt(e.target.value) || 3000;
                                                 setWaterGoal(goal);
-                                                saveData({waterGoal: goal});
+                                                saveData({ waterGoal: goal });
                                             }}
                                             className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-white outline-none focus:border-blue-500"
                                         />
@@ -1826,7 +1877,7 @@
                                                 }
                                             });
                                             setCompletedSets(newSets);
-                                            saveData({completedSets: newSets});
+                                            saveData({ completedSets: newSets });
                                         }
                                     }}
                                     className="w-full bg-orange-900/20 border border-orange-900 text-orange-400 p-3 rounded-lg font-bold text-sm active:scale-95 transition-all"
@@ -1858,22 +1909,22 @@
                     <header className="sticky top-0 z-50 bg-slate-950/95 backdrop-blur-md p-4 flex justify-between items-center border-b border-slate-800">
                         <i className="fas fa-dumbbell text-blue-500 text-xl"></i>
                         <div className="flex items-center gap-3 bg-slate-900 rounded-full px-4 py-2 border border-slate-700">
-                            <button 
-                                onClick={() => { 
-                                    const w = Math.max(1, currentWeek-1); 
-                                    setCurrentWeek(w); 
-                                    saveData({currentWeek: w}); 
+                            <button
+                                onClick={() => {
+                                    const w = Math.max(1, currentWeek - 1);
+                                    setCurrentWeek(w);
+                                    saveData({ currentWeek: w });
                                 }}
                                 className="active:scale-90 transition-transform"
                             >
                                 <i className="fas fa-chevron-left text-xs text-slate-400 p-1"></i>
                             </button>
                             <span className="font-black text-sm uppercase italic w-16 text-center">Sem {currentWeek}</span>
-                            <button 
-                                onClick={() => { 
-                                    const w = Math.min(24, currentWeek+1); 
-                                    setCurrentWeek(w); 
-                                    saveData({currentWeek: w}); 
+                            <button
+                                onClick={() => {
+                                    const w = Math.min(24, currentWeek + 1);
+                                    setCurrentWeek(w);
+                                    saveData({ currentWeek: w });
                                 }}
                                 className="active:scale-90 transition-transform"
                             >
@@ -1903,7 +1954,7 @@
                             <div className={`bg-gradient-to-br from-slate-900 to-slate-950 p-4 rounded-2xl border transition-all duration-300 shadow-xl ${isTimerActive ? 'border-blue-500 shadow-blue-600/20' : 'border-slate-800'}`}>
                                 <p className="text-[10px] uppercase font-black text-blue-400 mb-1">Descanso</p>
                                 <p className="text-2xl font-black italic text-white">
-                                    {timer > 0 ? `${Math.floor(timer/60)}:${(timer%60).toString().padStart(2,'0')}` : "0:00"}
+                                    {timer > 0 ? `${Math.floor(timer / 60)}:${(timer % 60).toString().padStart(2, '0')}` : "0:00"}
                                 </p>
                                 <div className="flex gap-1 mt-2">
                                     <button
@@ -1935,7 +1986,7 @@
                                                 </p>
                                             </div>
                                         </div>
-                                        
+
                                         {e.wu && (
                                             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                                                 {[0.5, 0.7, 0.9].map((pct, wi) => {
@@ -1943,9 +1994,9 @@
                                                     const done = completedSets[key];
                                                     const warmupWeight = Math.round(e.w * pct);
                                                     return (
-                                                        <button 
-                                                            key={wi} 
-                                                            onClick={() => toggleSet(day.id, e.name, wi, true, warmupWeight, e.s, e.r)} 
+                                                        <button
+                                                            key={wi}
+                                                            onClick={() => toggleSet(day.id, e.name, wi, true, warmupWeight, e.s, e.r)}
                                                             className={`shrink-0 px-4 py-2 rounded-full text-[10px] font-black border transition-all active:scale-90 ${done ? 'bg-orange-500 border-orange-400 text-white shadow-lg' : 'bg-slate-950 border-slate-700 text-slate-500'}`}
                                                         >
                                                             {warmupWeight}kg
@@ -1954,15 +2005,15 @@
                                                 })}
                                             </div>
                                         )}
-                                        
+
                                         <div className="grid grid-cols-4 gap-2">
-                                            {Array.from({length: e.s}).map((_, si) => {
+                                            {Array.from({ length: e.s }).map((_, si) => {
                                                 const key = `${currentWeek}-${day.id}-${e.name}-work-${si}`;
                                                 const done = completedSets[key];
                                                 return (
-                                                    <button 
-                                                        key={si} 
-                                                        onClick={() => toggleSet(day.id, e.name, si, false, e.w, e.s, e.r)} 
+                                                    <button
+                                                        key={si}
+                                                        onClick={() => toggleSet(day.id, e.name, si, false, e.w, e.s, e.r)}
                                                         className={`aspect-square rounded-2xl flex items-center justify-center font-black text-xl border-2 transition-all active:scale-90 ${done ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg shadow-emerald-500/30 pulse-success' : 'bg-slate-950 border-slate-700 text-slate-600'}`}
                                                     >
                                                         {done ? <i className="fas fa-check"></i> : si + 1}
@@ -2090,10 +2141,10 @@
                         );
                     });
                 `;
-                
+
                 const blob = new Blob([swCode], { type: 'application/javascript' });
                 const swUrl = URL.createObjectURL(blob);
-                
+
                 navigator.serviceWorker.register(swUrl)
                     .then(() => console.log('SW OK'))
                     .catch(err => console.log('SW Error:', err));
@@ -2101,4 +2152,5 @@
         }
     </script>
 </body>
+
 </html>
