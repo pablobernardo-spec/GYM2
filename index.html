@@ -77,6 +77,8 @@
 
         // URL del Google Apps Script - LA MISMA QUE YA TENÉS
         const SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbz3siWBIiF9wKtMdlYgkrcRkuVuabN85fRv-Y0ntXbuu7AysFi04jqvGnUqA_6r7-kI/exec';
+        const SHEET_ID = '1pL_OytXJ-Em6iAdg13PppBj7TlPtdMBMaCbIs5quh1E';
+        const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
 
         // BASE DE DATOS DE ALIMENTOS (valores por 100g)
         const FOOD_DATABASE = {
@@ -149,6 +151,14 @@
             
             // ESTADOS BIENESTAR - NUEVOS
             const [wellness, setWellness] = useState({});
+            const [showWellnessModal, setShowWellnessModal] = useState(false);
+            
+            // ESTADOS V4 - CALENDARIO Y COACHING
+            const [customFoods, setCustomFoods] = useState({});
+            const [coachingNotes, setCoachingNotes] = useState([]);
+            const [calendarView, setCalendarView] = useState(new Date());
+            const [selectedDay, setSelectedDay] = useState(null);
+            const [showDayModal, setShowDayModal] = useState(false);
             const [showWellnessModal, setShowWellnessModal] = useState(false);
             
             const timerIntervalRef = useRef(null);
@@ -234,6 +244,10 @@
                 } catch (err) {
                     console.error('Error cargando datos:', err);
                 }
+                
+                // Cargar custom foods V4
+                loadCustomFoods();
+                
                 setLoading(false);
             }, []);
 
@@ -414,6 +428,81 @@
                     muscleKg: Math.round(weight * musclePercent / 100 * 10) / 10
                 };
             }, []);
+
+            // CARGAR ALIMENTOS CUSTOM - V4
+            const loadCustomFoods = useCallback(async () => {
+                try {
+                    const response = await fetch(SHEETS_API_URL + '?action=get_custom_foods');
+                    const data = await response.json();
+                    if (data && typeof data === 'object') {
+                        setCustomFoods(data);
+                        saveData({ customFoods: data });
+                    }
+                } catch (error) {
+                    console.error('Error loading custom foods:', error);
+                }
+            }, []);
+
+            // GUARDAR ALIMENTO CUSTOM - V4
+            const saveCustomFood = useCallback(async (food, macros) => {
+                const newCustomFoods = { ...customFoods, [food.toLowerCase()]: macros };
+                setCustomFoods(newCustomFoods);
+                saveData({ customFoods: newCustomFoods });
+                
+                await syncToSheets({
+                    action: 'save_custom_food',
+                    food: food,
+                    kcal: macros.kcal,
+                    protein: macros.protein,
+                    carbs: macros.carbs,
+                    fat: macros.fat
+                });
+            }, [customFoods, saveData, syncToSheets]);
+
+            // CALCULAR MACROS CON CUSTOM FOODS - V4
+            const calculateFoodMacrosV4 = useCallback((foodName, grams) => {
+                const normalized = foodName.toLowerCase().trim();
+                
+                // Primero buscar en custom foods
+                if (customFoods[normalized]) {
+                    const food = customFoods[normalized];
+                    const multiplier = grams / 100;
+                    return {
+                        kcal: Math.round(food.kcal * multiplier),
+                        protein: Math.round(food.protein * multiplier * 10) / 10,
+                        carbs: Math.round(food.carbs * multiplier * 10) / 10,
+                        fat: Math.round(food.fat * multiplier * 10) / 10
+                    };
+                }
+                
+                // Sino buscar en base de datos estática
+                const food = FOOD_DATABASE[normalized];
+                if (food) {
+                    const multiplier = grams / 100;
+                    return {
+                        kcal: Math.round(food.kcal * multiplier),
+                        protein: Math.round(food.protein * multiplier * 10) / 10,
+                        carbs: Math.round(food.carbs * multiplier * 10) / 10,
+                        fat: Math.round(food.fat * multiplier * 10) / 10
+                    };
+                }
+                return null;
+            }, [customFoods]);
+
+            // OBTENER ACTIVIDADES DE UN DÍA - V4
+            const getDayActivities = useCallback((date) => {
+                const dateStr = date.toDateString();
+                
+                return {
+                    workouts: workoutHistory.filter(w => new Date(w.date).toDateString() === dateStr),
+                    running: runningActivities.filter(r => new Date(r.date).toDateString() === dateStr),
+                    football: footballActivities.filter(f => new Date(f.date).toDateString() === dateStr),
+                    meals: meals.filter(m => new Date(m.date).toDateString() === dateStr),
+                    water: waterIntake[dateStr] || 0,
+                    wellness: wellness[dateStr] || null
+                };
+            }, [workoutHistory, runningActivities, footballActivities, meals, waterIntake, wellness]);
+
 
             if (loading) {
                 return (
@@ -743,7 +832,7 @@
                                             if (formData.food && formData.grams) {
                                                 let macros;
                                                 if (formData.autoCalc) {
-                                                    macros = calculateFoodMacros(formData.food, parseFloat(formData.grams));
+                                                    macros = calculateFoodMacrosV4(formData.food, parseFloat(formData.grams));
                                                     if (!macros) {
                                                         alert('Alimento no encontrado. Ingresá los valores manualmente.');
                                                         return;
@@ -755,6 +844,8 @@
                                                         carbs: parseFloat(formData.carbs) || 0,
                                                         fat: parseFloat(formData.fat) || 0
                                                     };
+                                                    // Guardar en custom foods para futuro uso
+                                                    saveCustomFood(formData.food, macros);
                                                 }
                                                 
                                                 const newMeal = {
@@ -1263,6 +1354,206 @@
                 );
             };
 
+            
+            // VISTA CALENDARIO - V4
+            const CalendarView = () => {
+                const year = calendarView.getFullYear();
+                const month = calendarView.getMonth();
+                const today = new Date();
+                
+                // Obtener días del mes
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
+                const daysInMonth = lastDay.getDate();
+                const startingDayOfWeek = firstDay.getDay();
+                
+                // Crear array de días
+                const days = [];
+                for (let i = 0; i < startingDayOfWeek; i++) {
+                    days.push(null);
+                }
+                for (let i = 1; i <= daysInMonth; i++) {
+                    days.push(new Date(year, month, i));
+                }
+                
+                const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                
+                const changeMonth = (delta) => {
+                    const newDate = new Date(year, month + delta, 1);
+                    setCalendarView(newDate);
+                };
+                
+                const getDayIndicators = (date) => {
+                    if (!date) return [];
+                    const activities = getDayActivities(date);
+                    const indicators = [];
+                    
+                    if (activities.workouts.length > 0) indicators.push({ icon: '🏋️', color: 'bg-blue-500' });
+                    if (activities.running.length > 0) indicators.push({ icon: '🏃', color: 'bg-emerald-500' });
+                    if (activities.football.length > 0) indicators.push({ icon: '⚽', color: 'bg-orange-500' });
+                    if (activities.meals.length > 0) indicators.push({ icon: '🍽️', color: 'bg-purple-500' });
+                    if (activities.water >= waterGoal) indicators.push({ icon: '💧', color: 'bg-cyan-500' });
+                    
+                    return indicators;
+                };
+                
+                return (
+                    <div className="max-w-md mx-auto min-h-screen pb-24 fade-in p-4">
+                        <div className="flex items-center justify-between mb-6">
+                            <button
+                                onClick={() => changeMonth(-1)}
+                                className="p-3 bg-slate-900 rounded-xl border border-slate-800 active:scale-95 transition-all"
+                            >
+                                <i className="fas fa-chevron-left text-slate-400"></i>
+                            </button>
+                            <h2 className="text-2xl font-black uppercase italic">
+                                {monthNames[month]} {year}
+                            </h2>
+                            <button
+                                onClick={() => changeMonth(1)}
+                                className="p-3 bg-slate-900 rounded-xl border border-slate-800 active:scale-95 transition-all"
+                            >
+                                <i className="fas fa-chevron-right text-slate-400"></i>
+                            </button>
+                        </div>
+                        
+                        {/* Días de la semana */}
+                        <div className="grid grid-cols-7 gap-1 mb-2">
+                            {['D', 'L', 'M', 'M', 'J', 'V', 'S'].map((day, i) => (
+                                <div key={i} className="text-center text-xs font-black text-slate-500 py-2">
+                                    {day}
+                                </div>
+                            ))}
+                        </div>
+                        
+                        {/* Grid de días */}
+                        <div className="grid grid-cols-7 gap-1">
+                            {days.map((date, index) => {
+                                if (!date) {
+                                    return <div key={index} className="aspect-square"></div>;
+                                }
+                                
+                                const isToday = date.toDateString() === today.toDateString();
+                                const indicators = getDayIndicators(date);
+                                
+                                return (
+                                    <button
+                                        key={index}
+                                        onClick={() => {
+                                            setSelectedDay(date);
+                                            setShowDayModal(true);
+                                        }}
+                                        className={`aspect-square rounded-xl border-2 p-1 flex flex-col items-center justify-between active:scale-95 transition-all ${
+                                            isToday 
+                                                ? 'border-yellow-500 bg-yellow-500/20' 
+                                                : indicators.length > 0
+                                                    ? 'border-slate-700 bg-slate-900'
+                                                    : 'border-slate-800 bg-slate-950'
+                                        }`}
+                                    >
+                                        <span className={`text-xs font-bold ${isToday ? 'text-yellow-400' : 'text-slate-400'}`}>
+                                            {date.getDate()}
+                                        </span>
+                                        <div className="flex gap-0.5 flex-wrap justify-center">
+                                            {indicators.slice(0, 3).map((ind, i) => (
+                                                <div key={i} className={`w-1.5 h-1.5 rounded-full ${ind.color}`}></div>
+                                            ))}
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            };
+
+            // MODAL DÍA - V4
+            const DayModal = () => {
+                if (!selectedDay) return null;
+                const activities = getDayActivities(selectedDay);
+                
+                return (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50" onClick={() => setShowDayModal(false)}>
+                        <div className="bg-slate-900 rounded-3xl p-6 max-w-sm w-full max-h-[80vh] overflow-y-auto border border-slate-800" onClick={e => e.stopPropagation()}>
+                            <h3 className="text-xl font-black uppercase italic mb-4 text-blue-400">
+                                📅 {selectedDay.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                            </h3>
+                            
+                            {/* Entrenamientos */}
+                            {activities.workouts.length > 0 && (
+                                <div className="mb-4">
+                                    <p className="text-xs font-black uppercase text-blue-400 mb-2">🏋️ Entreno</p>
+                                    <div className="space-y-1">
+                                        {activities.workouts.map((w, i) => (
+                                            <p key={i} className="text-xs text-slate-400">• {w.exercise}</p>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {/* Running */}
+                            {activities.running.length > 0 && (
+                                <div className="mb-4">
+                                    <p className="text-xs font-black uppercase text-emerald-400 mb-2">🏃 Running</p>
+                                    {activities.running.map((r, i) => (
+                                        <p key={i} className="text-xs text-slate-400">• {r.km}km - {r.kcal} kcal</p>
+                                    ))}
+                                </div>
+                            )}
+                            
+                            {/* Fútbol */}
+                            {activities.football.length > 0 && (
+                                <div className="mb-4">
+                                    <p className="text-xs font-black uppercase text-orange-400 mb-2">⚽ Fútbol</p>
+                                    {activities.football.map((f, i) => (
+                                        <p key={i} className="text-xs text-slate-400">• {f.type} ({f.duration}min)</p>
+                                    ))}
+                                </div>
+                            )}
+                            
+                            {/* Comidas */}
+                            {activities.meals.length > 0 && (
+                                <div className="mb-4">
+                                    <p className="text-xs font-black uppercase text-purple-400 mb-2">🍽️ Comidas ({activities.meals.length})</p>
+                                    <p className="text-xs text-slate-400">
+                                        Total: {activities.meals.reduce((acc, m) => acc + m.kcal, 0)} kcal
+                                    </p>
+                                </div>
+                            )}
+                            
+                            {/* Agua */}
+                            {activities.water > 0 && (
+                                <div className="mb-4">
+                                    <p className="text-xs font-black uppercase text-cyan-400 mb-2">💧 Hidratación</p>
+                                    <p className="text-xs text-slate-400">{activities.water}ml de {waterGoal}ml</p>
+                                </div>
+                            )}
+                            
+                            {/* Bienestar */}
+                            {activities.wellness && (
+                                <div className="mb-4">
+                                    <p className="text-xs font-black uppercase text-indigo-400 mb-2">😴 Bienestar</p>
+                                    <p className="text-xs text-slate-400">Sueño: {activities.wellness.sleep}h - {'⭐'.repeat(activities.wellness.quality)}</p>
+                                </div>
+                            )}
+                            
+                            {activities.workouts.length === 0 && activities.running.length === 0 && 
+                             activities.football.length === 0 && activities.meals.length === 0 && (
+                                <p className="text-sm text-slate-500 text-center py-8">No hay actividades registradas</p>
+                            )}
+                            
+                            <button
+                                onClick={() => setShowDayModal(false)}
+                                className="w-full bg-blue-600 text-white p-3 rounded-xl font-bold text-sm active:scale-95 transition-all mt-4"
+                            >
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                );
+            };
+
             // VISTA HISTORIAL (mantenida de v2)
             const HistoryView = () => {
                 const groupedHistory = useMemo(() => {
@@ -1330,6 +1621,16 @@
                                         Última sync: {lastSync.toLocaleString('es-AR')}
                                     </p>
                                 )}
+                            
+                                <a 
+                                    href={SHEET_URL}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full bg-emerald-600 text-white p-3 rounded-xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 mt-3"
+                                >
+                                    <i className="fas fa-external-link-alt"></i>
+                                    Abrir en Google Sheets
+                                </a>
                             </div>
 
                             {/* Pesos Iniciales */}
@@ -1591,6 +1892,7 @@
                 <>
                     {currentView === 'workout' && <WorkoutView />}
                     {currentView === 'nutrition' && <NutritionView />}
+                    {currentView === 'calendar' && <CalendarView />}
                     {currentView === 'history' && <HistoryView />}
                     {currentView === 'settings' && <SettingsView />}
 
@@ -1600,36 +1902,44 @@
                     {showMealModal && <MealModal />}
                     {showMeasurementModal && <MeasurementModal />}
                     {showWellnessModal && <WellnessModal />}
+                    {showDayModal && <DayModal />}
 
                     {/* Bottom Navigation - 4 PESTAÑAS */}
                     <nav className="fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 p-2 flex justify-around items-center max-w-md mx-auto z-40">
                         <button
                             onClick={() => setCurrentView('workout')}
-                            className={`flex flex-col items-center gap-1 px-2 py-2 rounded-xl transition-all ${currentView === 'workout' ? 'text-blue-400' : 'text-slate-600'}`}
+                            className={`flex flex-col items-center gap-1 px-1 py-2 rounded-xl transition-all ${currentView === 'workout' ? 'text-blue-400' : 'text-slate-600'}`}
                         >
-                            <i className="fas fa-dumbbell text-base"></i>
-                            <span className="text-[8px] font-black uppercase">Entreno</span>
+                            <i className="fas fa-dumbbell text-sm"></i>
+                            <span className="text-[7px] font-black uppercase">Entreno</span>
                         </button>
                         <button
                             onClick={() => setCurrentView('nutrition')}
-                            className={`flex flex-col items-center gap-1 px-2 py-2 rounded-xl transition-all ${currentView === 'nutrition' ? 'text-purple-400' : 'text-slate-600'}`}
+                            className={`flex flex-col items-center gap-1 px-1 py-2 rounded-xl transition-all ${currentView === 'nutrition' ? 'text-purple-400' : 'text-slate-600'}`}
                         >
-                            <i className="fas fa-utensils text-base"></i>
-                            <span className="text-[8px] font-black uppercase">Nutrición</span>
+                            <i className="fas fa-utensils text-sm"></i>
+                            <span className="text-[7px] font-black uppercase">Nutrición</span>
+                        </button>
+                        <button
+                            onClick={() => setCurrentView('calendar')}
+                            className={`flex flex-col items-center gap-1 px-1 py-2 rounded-xl transition-all ${currentView === 'calendar' ? 'text-yellow-400' : 'text-slate-600'}`}
+                        >
+                            <i className="fas fa-calendar-alt text-sm"></i>
+                            <span className="text-[7px] font-black uppercase">Calendario</span>
                         </button>
                         <button
                             onClick={() => setCurrentView('history')}
-                            className={`flex flex-col items-center gap-1 px-2 py-2 rounded-xl transition-all ${currentView === 'history' ? 'text-emerald-400' : 'text-slate-600'}`}
+                            className={`flex flex-col items-center gap-1 px-1 py-2 rounded-xl transition-all ${currentView === 'history' ? 'text-emerald-400' : 'text-slate-600'}`}
                         >
-                            <i className="fas fa-clipboard-list text-base"></i>
-                            <span className="text-[8px] font-black uppercase">Historial</span>
+                            <i className="fas fa-list text-sm"></i>
+                            <span className="text-[7px] font-black uppercase">Historial</span>
                         </button>
                         <button
                             onClick={() => setCurrentView('settings')}
-                            className={`flex flex-col items-center gap-1 px-2 py-2 rounded-xl transition-all ${currentView === 'settings' ? 'text-blue-400' : 'text-slate-600'}`}
+                            className={`flex flex-col items-center gap-1 px-1 py-2 rounded-xl transition-all ${currentView === 'settings' ? 'text-blue-400' : 'text-slate-600'}`}
                         >
-                            <i className="fas fa-cog text-base"></i>
-                            <span className="text-[8px] font-black uppercase">Config</span>
+                            <i className="fas fa-cog text-sm"></i>
+                            <span className="text-[7px] font-black uppercase">Config</span>
                         </button>
                     </nav>
 
